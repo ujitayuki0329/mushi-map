@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -44,11 +44,48 @@ interface MapComponentProps {
   currentUserId: string | null;
 }
 
-const RecenterMap = ({ lat, lng }: { lat: number; lng: number }) => {
+const RecenterMap = ({ center }: { center: { lat: number; lng: number } }) => {
   const map = useMap();
+  const prevCenterRef = useRef<string>('');
+  const isInitialMount = useRef(true);
+  
   useEffect(() => {
-    map.setView([lat, lng], 13);
-  }, [lat, lng, map]);
+    // 初回マウント時は初期位置を記録してスキップ
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevCenterRef.current = `${center.lat.toFixed(6)}_${center.lng.toFixed(6)}`;
+      return;
+    }
+    
+    // 位置を文字列として比較（より確実に変更を検知）
+    const currentKey = `${center.lat.toFixed(6)}_${center.lng.toFixed(6)}`;
+    const prevKey = prevCenterRef.current;
+    
+    // 現在の地図の中心位置を取得
+    const currentMapCenter = map.getCenter();
+    const mapCenterKey = `${currentMapCenter.lat.toFixed(6)}_${currentMapCenter.lng.toFixed(6)}`;
+    const distance = map.distance(currentMapCenter, [center.lat, center.lng]);
+    
+    // 地図の中心位置と目標位置が異なる場合、またはcenterプロップが変更された場合に移動
+    if (prevKey !== currentKey || mapCenterKey !== currentKey) {
+      // 距離が10m以上離れている場合はflyTo、それ以外はsetView
+      if (distance > 10) {
+        // flyToを使用してスムーズに移動
+        map.flyTo([center.lat, center.lng], map.getZoom(), {
+          duration: 0.5
+        });
+      } else {
+        // 距離が近い場合でも、強制的に移動（ユーザーがボタンを押した場合）
+        map.setView([center.lat, center.lng], map.getZoom(), {
+          animate: true,
+          duration: 0.3
+        });
+      }
+      
+      prevCenterRef.current = currentKey;
+    }
+  }, [center.lat, center.lng, map]);
+  
   return null;
 };
 
@@ -94,7 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerCl
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapSizeFix />
-        <RecenterMap lat={center.lat} lng={center.lng} />
+        <RecenterMap center={center} />
         {entries.map((entry) => {
           // 自分の投稿かどうかでアイコンを切り替え
           let markerIcon = defaultIcon;

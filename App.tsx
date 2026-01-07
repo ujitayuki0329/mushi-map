@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon, Menu, Crown } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
 import AuthForm from './components/AuthForm';
 import PremiumUpgrade from './components/PremiumUpgrade';
+import EntryListView from './components/EntryListView';
 import { InsectEntry, Location } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
@@ -33,6 +34,8 @@ const App: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumUpgrade, setShowPremiumUpgrade] = useState(false);
   const [postLimitInfo, setPostLimitInfo] = useState<{ currentCount?: number; limit?: number; reason?: string } | null>(null);
+  const [showEntryListView, setShowEntryListView] = useState(false);
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
 
   // 認証状態の監視
   useEffect(() => {
@@ -148,10 +151,12 @@ const App: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           clearTimeout(timeout);
-          setCurrentLocation({
+          const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setCurrentLocation(location);
+          setUserLocation(location); // ユーザーの現在地を保存
           setIsLocating(false);
         },
         (error) => {
@@ -169,12 +174,53 @@ const App: React.FC = () => {
     return () => clearTimeout(timeout);
   }, []);
 
+  // 現在地に戻る関数
+  const handleReturnToCurrentLocation = () => {
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          
+          // 常に新しいオブジェクトを作成して、確実に更新を検知させる
+          // 小数点以下を6桁に統一して、微細な差を無視
+          const location = {
+            lat: parseFloat(newLat.toFixed(6)),
+            lng: parseFloat(newLng.toFixed(6)),
+          };
+          
+          // 強制的に更新
+          setCurrentLocation(location);
+          setUserLocation(location);
+          
+          setSelectedEntry(null); // 選択中のエントリをクリア
+          setIsLocating(false);
+        },
+        (error) => {
+          console.warn("Geolocation error:", error);
+          // 以前の位置情報があればそれを使用
+          if (userLocation) {
+            // 強制的に更新（同じ位置でも新しいオブジェクトを作成）
+            setCurrentLocation({ lat: userLocation.lat, lng: userLocation.lng });
+            setSelectedEntry(null);
+          }
+          setIsLocating(false);
+        },
+        { timeout: 3000, enableHighAccuracy: true }
+      );
+    } else if (userLocation) {
+      // 位置情報が取得できない場合は、保存されている位置情報を使用
+      // 強制的に更新（同じ位置でも新しいオブジェクトを作成）
+      setCurrentLocation({ lat: userLocation.lat, lng: userLocation.lng });
+      setSelectedEntry(null);
+    }
+  };
+
   // 全エントリの読み込み
   const loadAllEntries = async () => {
     try {
       const loadedEntries = await getAllEntries();
-      console.log('Loaded entries:', loadedEntries);
-      console.log('Current user:', user?.uid);
       setAllEntries(loadedEntries);
     } catch (error) {
       console.error('Error loading all entries:', error);
@@ -183,27 +229,9 @@ const App: React.FC = () => {
 
   // 表示するエントリをフィルタリング
   const entries = React.useMemo(() => {
-    console.log('Filtering entries:', { 
-      showOnlyMyEntries, 
-      userId: user?.uid, 
-      allEntriesCount: allEntries.length,
-      allEntriesWithUserId: allEntries.filter(e => e.userId).length
-    });
-    
     if (showOnlyMyEntries && user) {
-      const myEntries = allEntries.filter(entry => {
-        const matches = entry.userId === user.uid;
-        if (!matches && entry.userId) {
-          console.log('Entry not mine:', { entryId: entry.id, entryUserId: entry.userId, myUserId: user.uid });
-        }
-        return matches;
-      });
-      console.log('Filtered my entries:', myEntries);
-      console.log('All entries count:', allEntries.length);
-      console.log('My entries count:', myEntries.length);
-      return myEntries;
+      return allEntries.filter(entry => entry.userId === user.uid);
     }
-    console.log('Showing all entries:', allEntries.length);
     return allEntries;
   }, [allEntries, showOnlyMyEntries, user]);
 
@@ -398,7 +426,19 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 space-y-3 md:space-y-4 min-h-0">
           <div className="flex items-center justify-between mb-2 sticky top-0 bg-white pt-2 pb-1 z-10">
             <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">最近の採集</h2>
-            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold">{entries.length} 件</span>
+            <div className="flex items-center gap-2">
+              <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold">{entries.length} 件</span>
+              <button
+                onClick={() => {
+                  setShowEntryListView(true);
+                  setIsSidebarOpen(false);
+                }}
+                className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1"
+              >
+                <List className="w-3 h-3" />
+                すべて表示
+              </button>
+            </div>
           </div>
           
           {filteredEntries.length === 0 ? (
@@ -550,20 +590,32 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Floating Action Button */}
-        <button
-          onClick={() => {
-            if (!user) {
-              setShowAuthForm(true);
-            } else {
-              setIsFormOpen(true);
-            }
-          }}
-          className="absolute bottom-24 md:bottom-10 right-6 md:right-10 z-20 w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
-          title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
-        >
-          <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
-        </button>
+        {/* Button Container - Current Location & New Post */}
+        <div className="absolute bottom-24 md:bottom-10 right-6 md:right-10 z-20 flex flex-col items-center gap-3">
+          {/* Current Location Button */}
+          <button
+            onClick={handleReturnToCurrentLocation}
+            className="w-12 h-12 md:w-14 md:h-14 bg-white hover:bg-slate-50 text-slate-700 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 border-2 border-slate-200"
+            title="現在地に戻る"
+          >
+            <Navigation className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+
+          {/* Floating Action Button */}
+          <button
+            onClick={() => {
+              if (!user) {
+                setShowAuthForm(true);
+              } else {
+                setIsFormOpen(true);
+              }
+            }}
+            className="w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
+            title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
+          >
+            <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
+          </button>
+        </div>
         
 
         {/* Details Overlay */}
@@ -687,6 +739,18 @@ const App: React.FC = () => {
           currentCount={postLimitInfo?.currentCount}
           limit={postLimitInfo?.limit}
           reason={postLimitInfo?.reason}
+        />
+      )}
+
+      {showEntryListView && (
+        <EntryListView
+          entries={allEntries}
+          onClose={() => setShowEntryListView(false)}
+          onEntryClick={(entry) => {
+            setSelectedEntry(entry);
+            setCurrentLocation({ lat: entry.latitude, lng: entry.longitude });
+          }}
+          currentUserId={user?.uid || null}
         />
       )}
     </div>

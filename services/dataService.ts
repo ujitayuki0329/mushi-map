@@ -88,11 +88,8 @@ export const getAllEntries = async (): Promise<EntryWithUserId[]> => {
         aiInsights: data.aiInsights,
         userId: data.userId || undefined // ユーザーIDも含める（明示的にundefinedを設定）
       };
-      console.log('Entry loaded:', { id: entry.id, name: entry.name, userId: entry.userId });
       return entry;
     });
-    
-    console.log('Total entries loaded:', entries.length);
     // クライアント側でソート
     return entries.sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
