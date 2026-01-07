@@ -229,7 +229,6 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
               onChange={handleFileChange} 
               className="hidden" 
               accept="image/*"
-              capture="environment"
             />
             {isAnalyzing && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur rounded-3xl flex flex-col items-center justify-center z-10 animate-in fade-in">
