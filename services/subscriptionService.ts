@@ -196,3 +196,24 @@ export const isPremiumActive = async (userId: string): Promise<boolean> => {
   }
 };
 
+// プレミアムプランを解約（無料プランにダウングレード）
+export const cancelPremium = async (userId: string): Promise<void> => {
+  try {
+    const subscriptionRef = doc(db, 'userSubscriptions', userId);
+    
+    // 無料プランにダウングレード
+    await updateDoc(subscriptionRef, {
+      plan: 'free' as SubscriptionPlan,
+      isActive: true,
+      // endDateは削除しない（履歴として残す）
+    });
+  } catch (error: any) {
+    console.error('Error canceling premium:', error);
+    // 権限エラーの場合は詳細なメッセージを提供
+    if (error?.code === 'permission-denied') {
+      throw new Error('Firebaseのセキュリティルールが正しく設定されていません。READMEを参照してセキュリティルールを更新してください。');
+    }
+    throw error;
+  }
+};
+

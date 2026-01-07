@@ -11,7 +11,7 @@ import { InsectEntry, Location } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
 import { getUserEntries, saveEntry, getAllEntries } from './services/dataService';
-import { canPostEntry, getUserSubscription, isPremiumActive } from './services/subscriptionService';
+import { canPostEntry, getUserSubscription, isPremiumActive, cancelPremium } from './services/subscriptionService';
 import type { EntryWithUserId } from './services/dataService';
 import type { UserSubscription } from './types';
 
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [postLimitInfo, setPostLimitInfo] = useState<{ currentCount?: number; limit?: number; reason?: string } | null>(null);
   const [showEntryListView, setShowEntryListView] = useState(false);
   const [userLocation, setUserLocation] = useState<Location | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   // 認証状態の監視
   useEffect(() => {
@@ -356,13 +357,13 @@ const App: React.FC = () => {
         <div className="p-4 md:p-8 pb-4 md:pb-6 space-y-4 md:space-y-6 flex-shrink-0 pt-6 md:pt-8">
           {/* Mobile Header with Close Button */}
           <div className="flex items-center justify-between md:hidden pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-                <Bug className="w-6 h-6" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                <Bug className="w-4 h-4" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
-                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
+                <h1 className="text-lg font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
+                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
               </div>
             </div>
             <button
@@ -374,13 +375,13 @@ const App: React.FC = () => {
           </div>
           
           {/* Desktop Header */}
-          <div className="hidden md:flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-              <Bug className="w-7 h-7" />
+          <div className="hidden md:flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+              <Bug className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
-              <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
             </div>
           </div>
           <div className="relative group">
@@ -529,6 +530,19 @@ const App: React.FC = () => {
               </button>
             )}
             
+            {isPremium && (
+              <button
+                onClick={() => {
+                  setShowPremiumUpgrade(true);
+                  setIsSidebarOpen(false);
+                }}
+                className="w-full py-3 text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+              >
+                <Info className="w-4 h-4" />
+                プレミアムプランの詳細
+              </button>
+            )}
+            
             <button
               onClick={handleLogout}
               className="w-full py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-2xl transition-all flex items-center justify-center gap-2"
@@ -566,11 +580,11 @@ const App: React.FC = () => {
         {/* Floating Header (Mobile) */}
         <div className={`absolute top-4 left-4 right-4 md:hidden ${isSidebarOpen ? 'z-[80] opacity-0 pointer-events-none' : 'z-[100] opacity-100'} transition-opacity duration-200 ease-out`}>
           <div className="bg-white/90 backdrop-blur-xl shadow-2xl rounded-[2rem] p-3 flex items-center justify-between border border-white/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
-                <Bug className="w-5 h-5" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white">
+                <Bug className="w-4 h-4" />
               </div>
-              <span className="font-black text-slate-900 tracking-tight">MUSHI MAP</span>
+              <span className="font-black text-slate-900 tracking-tight text-sm">MUSHI MAP</span>
             </div>
             <div className="flex items-center gap-2">
               {!user ? (
@@ -737,9 +751,34 @@ const App: React.FC = () => {
               }
             }
           }}
+          onCancel={async () => {
+            if (!user) return;
+            
+            // 確認ダイアログ
+            const confirmed = window.confirm(
+              'プレミアムプランを解約しますか？\n\n解約後は無料プランに戻り、月間10件の投稿制限が適用されます。'
+            );
+            
+            if (!confirmed) return;
+            
+            setIsCanceling(true);
+            try {
+              await cancelPremium(user.uid);
+              await loadSubscription();
+              setShowPremiumUpgrade(false);
+              setPostLimitInfo(null);
+              alert('プレミアムプランを解約しました。無料プランに戻りました。');
+            } catch (error: any) {
+              console.error('Cancel error:', error);
+              alert('解約に失敗しました: ' + (error.message || error));
+            } finally {
+              setIsCanceling(false);
+            }
+          }}
           currentCount={postLimitInfo?.currentCount}
           limit={postLimitInfo?.limit}
           reason={postLimitInfo?.reason}
+          isPremium={isPremium}
         />
       )}
 
