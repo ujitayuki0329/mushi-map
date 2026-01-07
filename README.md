@@ -46,6 +46,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/17U45jQlrT2TVJt9B2a685A
 
 ### Firebase権限エラーが発生する場合
 
+**重要**: フリーミアムモデルを使用する場合、以下のセキュリティルールを必ず設定してください。
+
 Firestoreのセキュリティルールを更新してください：
 
 1. [Firebase Console](https://console.firebase.google.com/)にアクセス
@@ -63,6 +65,12 @@ service cloud.firestore {
       // 書き込み: ログイン必須、自分のデータのみ
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    match /userSubscriptions/{userId} {
+      // 読み取り: 自分のサブスクリプション情報のみ
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // 書き込み: 自分のサブスクリプション情報のみ
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
@@ -90,3 +98,5 @@ service firebase.storage {
 ```
 
 3. 「公開」ボタンをクリック
+
+**注意**: セキュリティルールを更新しない場合、アプリはエラーなく動作しますが、サブスクリプション機能は無料プランとして動作します。プレミアム機能を使用するには、必ずセキュリティルールを更新してください。

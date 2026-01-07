@@ -18,3 +18,13 @@ export interface Location {
   lat: number;
   lng: number;
 }
+
+export type SubscriptionPlan = 'free' | 'premium';
+
+export interface UserSubscription {
+  userId: string;
+  plan: SubscriptionPlan;
+  startDate: number;
+  endDate?: number; // プレミアムの場合、有効期限
+  isActive: boolean;
+}

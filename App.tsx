@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon, Menu } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon, Menu, Crown } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
 import AuthForm from './components/AuthForm';
+import PremiumUpgrade from './components/PremiumUpgrade';
 import { InsectEntry, Location } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
 import { getUserEntries, saveEntry, getAllEntries } from './services/dataService';
+import { canPostEntry, getUserSubscription, isPremiumActive } from './services/subscriptionService';
 import type { EntryWithUserId } from './services/dataService';
+import type { UserSubscription } from './types';
 
 const DEFAULT_LOCATION: Location = { lat: 35.6895, lng: 139.6917 }; // Tokyo
 
@@ -26,6 +29,10 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLocating, setIsLocating] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumUpgrade, setShowPremiumUpgrade] = useState(false);
+  const [postLimitInfo, setPostLimitInfo] = useState<{ currentCount?: number; limit?: number; reason?: string } | null>(null);
 
   // 認証状態の監視
   useEffect(() => {
@@ -46,14 +53,101 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadAllEntries();
+      loadSubscription();
+    } else {
+      setSubscription(null);
+      setIsPremium(false);
     }
   }, [user]);
 
+  // サブスクリプション情報の読み込み
+  const loadSubscription = async () => {
+    if (!user) {
+      setSubscription(null);
+      setIsPremium(false);
+      return;
+    }
+    
+    // デフォルト値を先に設定（エラー時でも確実に動作するように）
+    const defaultSubscription: UserSubscription = {
+      userId: user.uid,
+      plan: 'free',
+      startDate: Date.now(),
+      isActive: true
+    };
+    
+    try {
+      const sub = await getUserSubscription(user.uid);
+      if (sub) {
+        setSubscription(sub);
+        try {
+          const premium = await isPremiumActive(user.uid);
+          setIsPremium(premium);
+          
+          // 投稿数情報を取得
+          if (!premium) {
+            try {
+              const { getMonthlyEntryCount } = await import('./services/subscriptionService');
+              const count = await getMonthlyEntryCount(user.uid);
+              setPostLimitInfo({
+                currentCount: count,
+                limit: 10
+              });
+            } catch (countError) {
+              // 投稿数取得に失敗した場合はデフォルト値を設定
+              console.warn('Error getting monthly count (using default):', countError);
+              setPostLimitInfo({
+                currentCount: 0,
+                limit: 10
+              });
+            }
+          } else {
+            setPostLimitInfo(null);
+          }
+        } catch (premiumError) {
+          // プレミアム状態の確認に失敗した場合は無料プランとして扱う
+          console.warn('Error checking premium status (using free plan):', premiumError);
+          setIsPremium(false);
+          setPostLimitInfo({
+            currentCount: 0,
+            limit: 10
+          });
+        }
+      } else {
+        // サブスクリプション情報が取得できなかった場合
+        setSubscription(defaultSubscription);
+        setIsPremium(false);
+        setPostLimitInfo({
+          currentCount: 0,
+          limit: 10
+        });
+      }
+    } catch (error: any) {
+      // サブスクリプション情報の取得に失敗した場合は無料プランとして扱う
+      // permission-deniedエラーは無視して続行
+      if (error?.code !== 'permission-denied') {
+        console.warn('Error loading subscription (using free plan as fallback):', error);
+      }
+      setSubscription(defaultSubscription);
+      setIsPremium(false);
+      setPostLimitInfo({
+        currentCount: 0,
+        limit: 10
+      });
+    }
+  };
+
   // 位置情報の取得
   useEffect(() => {
+    // タイムアウトを設定して、一定時間経過後は強制的にローディングを解除
+    const timeout = setTimeout(() => {
+      setIsLocating(false);
+    }, 5000); // 5秒でタイムアウト
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(timeout);
           setCurrentLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -61,13 +155,18 @@ const App: React.FC = () => {
           setIsLocating(false);
         },
         (error) => {
-          console.error("Geolocation error:", error);
+          clearTimeout(timeout);
+          console.warn("Geolocation error (using default location):", error);
           setIsLocating(false);
-        }
+        },
+        { timeout: 3000, enableHighAccuracy: false } // タイムアウトを3秒に設定
       );
     } else {
+      clearTimeout(timeout);
       setIsLocating(false);
     }
+
+    return () => clearTimeout(timeout);
   }, []);
 
   // 全エントリの読み込み
@@ -120,6 +219,18 @@ const App: React.FC = () => {
   const handleSaveEntry = async (data: { name: string; memo: string; image: string }) => {
     if (!user) {
       setShowAuthForm(true);
+      return;
+    }
+
+    // 投稿制限をチェック
+    const postCheck = await canPostEntry(user.uid);
+    if (!postCheck.canPost) {
+      setPostLimitInfo({
+        currentCount: postCheck.currentCount,
+        limit: postCheck.limit,
+        reason: postCheck.reason
+      });
+      setShowPremiumUpgrade(true);
       return;
     }
 
@@ -347,13 +458,37 @@ const App: React.FC = () => {
         
         {/* ログアウトセクション（ログイン時のみ表示） */}
         {user ? (
-          <div className="p-4 md:p-6 border-t border-slate-100 bg-white">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-4 md:p-6 border-t border-slate-100 bg-white space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-800 truncate">{user.email}</p>
-                <p className="text-xs text-slate-400">ログイン中</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-bold text-slate-800 truncate">{user.email}</p>
+                  {isPremium && (
+                    <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
+                      <Crown className="w-3 h-3" />
+                      PREMIUM
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">
+                  {isPremium ? 'プレミアムプラン' : subscription ? `無料プラン (${postLimitInfo?.currentCount || 0}/${postLimitInfo?.limit || 10}件)` : 'ログイン中'}
+                </p>
               </div>
             </div>
+            
+            {!isPremium && (
+              <button
+                onClick={() => {
+                  setShowPremiumUpgrade(true);
+                  setIsSidebarOpen(false);
+                }}
+                className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+              >
+                <Crown className="w-4 h-4" />
+                プレミアムにアップグレード
+              </button>
+            )}
+            
             <button
               onClick={handleLogout}
               className="w-full py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-2xl transition-all flex items-center justify-center gap-2"
@@ -523,6 +658,35 @@ const App: React.FC = () => {
         <AuthForm 
           onClose={() => setShowAuthForm(false)} 
           onSuccess={() => setShowAuthForm(false)}
+        />
+      )}
+      
+      {showPremiumUpgrade && (
+        <PremiumUpgrade
+          onClose={() => {
+            setShowPremiumUpgrade(false);
+            setPostLimitInfo(null);
+          }}
+          onUpgrade={async () => {
+            // ここで実際の決済処理を実装
+            // 現在はデモとして、直接プレミアムにアップグレード
+            if (user) {
+              try {
+                const { upgradeToPremium } = await import('./services/subscriptionService');
+                await upgradeToPremium(user.uid, 1);
+                await loadSubscription();
+                setShowPremiumUpgrade(false);
+                setPostLimitInfo(null);
+                alert('プレミアムプランにアップグレードしました！');
+              } catch (error) {
+                console.error('Upgrade error:', error);
+                alert('アップグレードに失敗しました。もう一度お試しください。');
+              }
+            }
+          }}
+          currentCount={postLimitInfo?.currentCount}
+          limit={postLimitInfo?.limit}
+          reason={postLimitInfo?.reason}
         />
       )}
     </div>
