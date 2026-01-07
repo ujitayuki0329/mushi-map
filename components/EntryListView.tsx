@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Filter, Calendar, MapPin, Grid, List, ChevronRight, Bug, SortAsc, SortDesc } from 'lucide-react';
+import { X, Search, Filter, Calendar, MapPin, Grid, List, ChevronRight, Bug, SortAsc, SortDesc, Snowflake, Sun, Leaf, Flower } from 'lucide-react';
 import { InsectEntry } from '../types';
 import type { EntryWithUserId } from '../services/dataService';
+import { getPrefectureFromCoordinates, getSeasonFromTimestamp } from '../utils/locationUtils';
 
 interface EntryListViewProps {
   entries: EntryWithUserId[];
@@ -24,6 +25,8 @@ const EntryListView: React.FC<EntryListViewProps> = ({
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
   const [showFilters, setShowFilters] = useState(false);
   const [filterMyEntries, setFilterMyEntries] = useState<boolean | null>(null);
+  const [filterSeason, setFilterSeason] = useState<string | null>(null);
+  const [filterPrefecture, setFilterPrefecture] = useState<string | null>(null);
 
   // フィルタリングとソート
   const filteredAndSortedEntries = useMemo(() => {
@@ -48,6 +51,22 @@ const EntryListView: React.FC<EntryListViewProps> = ({
       }
     }
 
+    // 季節でフィルタリング
+    if (filterSeason) {
+      filtered = filtered.filter(entry => {
+        const season = getSeasonFromTimestamp(entry.timestamp);
+        return season === filterSeason;
+      });
+    }
+
+    // 都道府県でフィルタリング
+    if (filterPrefecture) {
+      filtered = filtered.filter(entry => {
+        const prefecture = getPrefectureFromCoordinates(entry.latitude, entry.longitude);
+        return prefecture === filterPrefecture;
+      });
+    }
+
     // ソート
     const sorted = [...filtered].sort((a, b) => {
       switch (sortOption) {
@@ -65,7 +84,7 @@ const EntryListView: React.FC<EntryListViewProps> = ({
     });
 
     return sorted;
-  }, [entries, searchQuery, sortOption, filterMyEntries, currentUserId]);
+  }, [entries, searchQuery, sortOption, filterMyEntries, filterSeason, filterPrefecture, currentUserId]);
 
   const getSortIcon = () => {
     if (sortOption.includes('asc')) return <SortAsc className="w-4 h-4" />;
@@ -117,7 +136,7 @@ const EntryListView: React.FC<EntryListViewProps> = ({
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ${
-                showFilters || filterMyEntries !== null
+                showFilters || filterMyEntries !== null || filterSeason !== null || filterPrefecture !== null
                   ? 'bg-emerald-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
@@ -166,7 +185,7 @@ const EntryListView: React.FC<EntryListViewProps> = ({
           {/* Filter Panel */}
           {showFilters && (
             <div className="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {currentUserId && (
                   <div>
                     <label className="text-xs font-bold text-slate-600 mb-2 block">投稿者</label>
@@ -204,6 +223,126 @@ const EntryListView: React.FC<EntryListViewProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* 季節フィルター */}
+                <div>
+                  <label className="text-xs font-bold text-slate-600 mb-2 block">季節</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      onClick={() => setFilterSeason(null)}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs transition-all ${
+                        filterSeason === null
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      すべて
+                    </button>
+                    <button
+                      onClick={() => setFilterSeason('春')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                        filterSeason === '春'
+                          ? 'bg-pink-500 text-white'
+                          : 'bg-white text-slate-600 hover:bg-pink-50'
+                      }`}
+                    >
+                      <Flower className="w-3 h-3" />
+                      春
+                    </button>
+                    <button
+                      onClick={() => setFilterSeason('夏')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                        filterSeason === '夏'
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-white text-slate-600 hover:bg-yellow-50'
+                      }`}
+                    >
+                      <Sun className="w-3 h-3" />
+                      夏
+                    </button>
+                    <button
+                      onClick={() => setFilterSeason('秋')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                        filterSeason === '秋'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-white text-slate-600 hover:bg-orange-50'
+                      }`}
+                    >
+                      <Leaf className="w-3 h-3" />
+                      秋
+                    </button>
+                    <button
+                      onClick={() => setFilterSeason('冬')}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                        filterSeason === '冬'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white text-slate-600 hover:bg-blue-50'
+                      }`}
+                    >
+                      <Snowflake className="w-3 h-3" />
+                      冬
+                    </button>
+                  </div>
+                </div>
+
+                {/* 都道府県フィルター */}
+                <div>
+                  <label className="text-xs font-bold text-slate-600 mb-2 block">都道府県</label>
+                  <select
+                    value={filterPrefecture || ''}
+                    onChange={(e) => setFilterPrefecture(e.target.value || null)}
+                    className="w-full py-2 px-3 rounded-xl font-bold text-xs bg-white border-2 border-slate-200 focus:border-emerald-500 focus:outline-none text-slate-700"
+                  >
+                    <option value="">すべて</option>
+                    <option value="北海道">北海道</option>
+                    <option value="青森県">青森県</option>
+                    <option value="岩手県">岩手県</option>
+                    <option value="宮城県">宮城県</option>
+                    <option value="秋田県">秋田県</option>
+                    <option value="山形県">山形県</option>
+                    <option value="福島県">福島県</option>
+                    <option value="茨城県">茨城県</option>
+                    <option value="栃木県">栃木県</option>
+                    <option value="群馬県">群馬県</option>
+                    <option value="埼玉県">埼玉県</option>
+                    <option value="千葉県">千葉県</option>
+                    <option value="東京都">東京都</option>
+                    <option value="神奈川県">神奈川県</option>
+                    <option value="新潟県">新潟県</option>
+                    <option value="富山県">富山県</option>
+                    <option value="石川県">石川県</option>
+                    <option value="福井県">福井県</option>
+                    <option value="山梨県">山梨県</option>
+                    <option value="長野県">長野県</option>
+                    <option value="岐阜県">岐阜県</option>
+                    <option value="静岡県">静岡県</option>
+                    <option value="愛知県">愛知県</option>
+                    <option value="三重県">三重県</option>
+                    <option value="滋賀県">滋賀県</option>
+                    <option value="京都府">京都府</option>
+                    <option value="大阪府">大阪府</option>
+                    <option value="兵庫県">兵庫県</option>
+                    <option value="奈良県">奈良県</option>
+                    <option value="和歌山県">和歌山県</option>
+                    <option value="鳥取県">鳥取県</option>
+                    <option value="島根県">島根県</option>
+                    <option value="岡山県">岡山県</option>
+                    <option value="広島県">広島県</option>
+                    <option value="山口県">山口県</option>
+                    <option value="徳島県">徳島県</option>
+                    <option value="香川県">香川県</option>
+                    <option value="愛媛県">愛媛県</option>
+                    <option value="高知県">高知県</option>
+                    <option value="福岡県">福岡県</option>
+                    <option value="佐賀県">佐賀県</option>
+                    <option value="長崎県">長崎県</option>
+                    <option value="熊本県">熊本県</option>
+                    <option value="大分県">大分県</option>
+                    <option value="宮崎県">宮崎県</option>
+                    <option value="鹿児島県">鹿児島県</option>
+                    <option value="沖縄県">沖縄県</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
