@@ -424,7 +424,7 @@ const App: React.FC = () => {
               setIsFormOpen(true);
             }
           }}
-          className="absolute bottom-48 md:bottom-10 right-6 md:right-10 z-20 w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
+          className="absolute bottom-6 md:bottom-10 right-6 md:right-10 z-20 w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
           title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
         >
           <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
