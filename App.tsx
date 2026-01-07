@@ -388,7 +388,7 @@ const App: React.FC = () => {
         />
 
         {/* Floating Header (Mobile) */}
-        <div className={`absolute top-4 left-4 right-4 md:hidden ${isSidebarOpen ? 'z-[80]' : 'z-[100]'} animate-in slide-in-from-top duration-700`}>
+        <div className={`absolute top-4 left-4 right-4 md:hidden ${isSidebarOpen ? 'z-[80] opacity-0 pointer-events-none' : 'z-[100] opacity-100'} transition-opacity duration-200 ease-out`}>
           <div className="bg-white/90 backdrop-blur-xl shadow-2xl rounded-[2rem] p-3 flex items-center justify-between border border-white/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
