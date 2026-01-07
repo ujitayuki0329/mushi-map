@@ -13,7 +13,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebaseConfig';
 import { InsectEntry } from '../types';
 
-export const saveEntry = async (entry: Omit<InsectEntry, 'id'>, userId: string, imageBase64: string) => {
+export const saveEntry = async (entry: Omit<InsectEntry, 'id' | 'imageUrl'>, userId: string, imageBase64: string) => {
   try {
     // 画像をStorageにアップロード
     const imageRef = ref(storage, `insects/${userId}/${Date.now()}.jpg`);

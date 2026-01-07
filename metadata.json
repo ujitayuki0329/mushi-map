@@ -1,5 +1,5 @@
 {
-  "name": "Insect Collector Maps",
+  "name": "MUSHI MAP",
   "description": "An application to record and map insect sightings using Google Maps and Gemini AI for ecological insights.",
   "requestFramePermissions": [
     "camera",

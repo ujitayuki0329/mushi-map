@@ -159,7 +159,7 @@ const App: React.FC = () => {
           <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <Bug className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-2">Insect Collection</h1>
+          <h1 className="text-3xl font-black text-slate-900 mb-2">MUSHI MAP</h1>
           <p className="text-slate-600 mb-8">ログインしてコレクションを開始しましょう</p>
           <button
             onClick={() => setShowAuthForm(true)}
@@ -198,7 +198,7 @@ const App: React.FC = () => {
               <Bug className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Insect Collection</h1>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
               <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
             </div>
           </div>
@@ -307,7 +307,7 @@ const App: React.FC = () => {
               <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
                 <Bug className="w-5 h-5" />
               </div>
-              <span className="font-black text-slate-900 tracking-tight">Insect Maps</span>
+              <span className="font-black text-slate-900 tracking-tight">MUSHI MAP</span>
             </div>
             <button className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center">
               <Search className="w-5 h-5 text-slate-500" />
