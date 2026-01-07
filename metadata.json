@@ -1,0 +1,8 @@
+{
+  "name": "Insect Collector Maps",
+  "description": "An application to record and map insect sightings using Google Maps and Gemini AI for ecological insights.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
