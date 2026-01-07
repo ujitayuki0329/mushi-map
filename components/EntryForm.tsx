@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { X, Camera, MapPin, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Camera, MapPin, Loader2, Sparkles, Wand2, Upload, Video } from 'lucide-react';
 import { analyzeInsectImage } from '../services/geminiService';
 
 interface EntryFormProps {
@@ -15,7 +15,74 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCameraMode, setIsCameraMode] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // カメラストリームのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  // カメラモード時のビデオストリーム設定
+  useEffect(() => {
+    if (isCameraMode && videoRef.current) {
+      if (stream) {
+        videoRef.current.srcObject = stream;
+      }
+    } else {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [isCameraMode, stream]);
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' }, // 背面カメラを優先
+        audio: false 
+      });
+      setStream(mediaStream);
+      setIsCameraMode(true);
+      setImage(null); // 既存の画像をクリア
+      setName('');
+      setMemo('');
+    } catch (error) {
+      console.error('Camera access error:', error);
+      setErrorMessage('カメラへのアクセスが拒否されました。ブラウザの設定を確認してください。');
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraMode(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg');
+        setImage(imageData);
+        stopCamera();
+      }
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -29,6 +96,11 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleClose = () => {
+    stopCamera();
+    onClose();
   };
 
   const handleAnalyze = async () => {
@@ -70,55 +142,95 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
               <p className="text-xs text-slate-400 mt-1">AIが種類を判別します</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600">
+          <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Image Upload Area */}
+          {/* Image Upload/Camera Area */}
           <div className="relative group">
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative h-56 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all ${
-                image ? 'border-transparent ring-4 ring-emerald-50' : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30'
-              }`}
-            >
-              {image ? (
-                <>
-                  <img src={image} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-3xl" />
+            {isCameraMode ? (
+              <div className="relative h-56 rounded-3xl overflow-hidden bg-black">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                <div className="absolute inset-0 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="px-4 py-2 bg-slate-900/80 backdrop-blur text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="w-16 h-16 bg-white rounded-full border-4 border-emerald-500 shadow-2xl hover:scale-110 transition-transform active:scale-95"
+                  />
+                </div>
+              </div>
+            ) : image ? (
+              <div 
+                onClick={() => !isAnalyzing && fileInputRef.current?.click()}
+                className={`relative h-56 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  isAnalyzing ? '' : 'border-transparent ring-4 ring-emerald-50'
+                }`}
+              >
+                <img src={image} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-3xl" />
+                {!isAnalyzing && (
                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl flex items-center justify-center">
                     <Camera className="w-10 h-10 text-white" />
                   </div>
-                  {/* AI Trigger Overlay */}
-                  {!name && !isAnalyzing && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleAnalyze(); }}
-                      className="absolute bottom-4 right-4 bg-emerald-500 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-sm font-bold hover:scale-105 transition-transform"
-                    >
-                      <Wand2 className="w-4 h-4" />
-                      AIで判定
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="text-center">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
-                    <Camera className="w-7 h-7" />
+                )}
+                {/* AI Trigger Overlay */}
+                {!name && !isAnalyzing && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleAnalyze(); }}
+                    className="absolute bottom-4 right-4 bg-emerald-500 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-sm font-bold hover:scale-105 transition-transform"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    AIで判定
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative h-48 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
+                >
+                  <div className="text-center">
+                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+                      <Upload className="w-7 h-7" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-600">画像をアップロード</p>
+                    <p className="text-xs text-slate-400 mt-1">タップして選択</p>
                   </div>
-                  <p className="text-sm font-bold text-slate-600">画像をアップロード</p>
-                  <p className="text-xs text-slate-400 mt-1">タップして撮影または選択</p>
                 </div>
-              )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-                accept="image/*" 
-              />
-            </div>
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="w-full py-3 bg-emerald-500 text-white rounded-2xl font-bold text-sm hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                >
+                  <Video className="w-5 h-5" />
+                  カメラで撮影
+                </button>
+              </div>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              className="hidden" 
+              accept="image/*"
+              capture="environment"
+            />
             {isAnalyzing && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur rounded-3xl flex flex-col items-center justify-center z-10 animate-in fade-in">
                 <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-3" />
