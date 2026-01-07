@@ -34,6 +34,20 @@
         .leaflet-popup-tip {
           display: none;
         }
+        /* モバイルでズームコントロールを左下に配置（プラスボタンと重ならないように） */
+        @media (max-width: 768px) {
+          .leaflet-control-zoom,
+          .leaflet-bar,
+          .leaflet-control {
+            top: 50px !important;
+          }
+          .leaflet-control-zoom {
+            margin-top: 80px !important;
+            margin-left: 10px !important;
+            margin-right: auto !important;
+            margin-bottom: 150px !important;
+          }
+        }
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
