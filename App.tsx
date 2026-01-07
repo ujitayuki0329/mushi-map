@@ -214,7 +214,7 @@ const App: React.FC = () => {
       )}
       
       <aside className={`fixed md:relative bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-auto top-auto md:top-auto w-full md:w-[26rem] h-[85vh] md:h-full max-h-[85vh] md:max-h-none flex flex-col bg-white shadow-2xl md:shadow-2xl z-30 md:z-20 overflow-hidden border-r-0 md:border-r border-slate-100 rounded-t-[2.5rem] md:rounded-none transform transition-transform duration-300 ease-out ${isSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}>
-        <div className="p-4 md:p-8 pb-4 md:pb-6 space-y-4 md:space-y-6 flex-shrink-0">
+        <div className="p-4 md:p-8 pb-4 md:pb-6 space-y-4 md:space-y-6 flex-shrink-0 pt-6 md:pt-8">
           {/* Mobile Header with Close Button */}
           <div className="flex items-center justify-between md:hidden pb-3 border-b border-slate-100">
             <div className="flex items-center gap-3">
@@ -388,8 +388,8 @@ const App: React.FC = () => {
         />
 
         {/* Floating Header (Mobile) */}
-        <div className="absolute top-6 left-6 right-6 md:hidden z-[100] animate-in slide-in-from-top duration-700">
-          <div className="bg-white/90 backdrop-blur-xl shadow-2xl rounded-[2rem] p-4 flex items-center justify-between border border-white/50">
+        <div className="absolute top-4 left-4 right-4 md:hidden z-[100] animate-in slide-in-from-top duration-700">
+          <div className="bg-white/90 backdrop-blur-xl shadow-2xl rounded-[2rem] p-3 flex items-center justify-between border border-white/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
                 <Bug className="w-5 h-5" />
@@ -424,7 +424,7 @@ const App: React.FC = () => {
               setIsFormOpen(true);
             }
           }}
-          className="absolute bottom-6 md:bottom-10 right-6 md:right-10 z-20 w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
+          className="absolute bottom-20 md:bottom-10 right-6 md:right-10 z-20 w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
           title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
         >
           <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
