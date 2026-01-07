@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
@@ -8,7 +8,8 @@ import AuthForm from './components/AuthForm';
 import { InsectEntry, Location } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
-import { getUserEntries, saveEntry } from './services/dataService';
+import { getUserEntries, saveEntry, getAllEntries } from './services/dataService';
+import type { EntryWithUserId } from './services/dataService';
 
 const DEFAULT_LOCATION: Location = { lat: 35.6895, lng: 139.6917 }; // Tokyo
 
@@ -16,7 +17,8 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [showAuthForm, setShowAuthForm] = useState(false);
-  const [entries, setEntries] = useState<InsectEntry[]>([]);
+  const [allEntries, setAllEntries] = useState<EntryWithUserId[]>([]);
+  const [showOnlyMyEntries, setShowOnlyMyEntries] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Location>(DEFAULT_LOCATION);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,15 +31,22 @@ const App: React.FC = () => {
     const unsubscribe = onAuthChange((user) => {
       setUser(user);
       setIsLoadingAuth(false);
-      if (user) {
-        loadEntries(user.uid);
-      } else {
-        setEntries([]);
-      }
     });
 
     return () => unsubscribe();
   }, []);
+
+  // 全エントリの読み込み（未ログイン時も含む）
+  useEffect(() => {
+    loadAllEntries();
+  }, []);
+
+  // エントリの再読み込み（投稿後など）
+  useEffect(() => {
+    if (user) {
+      loadAllEntries();
+    }
+  }, [user]);
 
   // 位置情報の取得
   useEffect(() => {
@@ -60,15 +69,43 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // データの読み込み
-  const loadEntries = async (userId: string) => {
+  // 全エントリの読み込み
+  const loadAllEntries = async () => {
     try {
-      const loadedEntries = await getUserEntries(userId);
-      setEntries(loadedEntries);
+      const loadedEntries = await getAllEntries();
+      console.log('Loaded entries:', loadedEntries);
+      console.log('Current user:', user?.uid);
+      setAllEntries(loadedEntries);
     } catch (error) {
-      console.error('Error loading entries:', error);
+      console.error('Error loading all entries:', error);
     }
   };
+
+  // 表示するエントリをフィルタリング
+  const entries = React.useMemo(() => {
+    console.log('Filtering entries:', { 
+      showOnlyMyEntries, 
+      userId: user?.uid, 
+      allEntriesCount: allEntries.length,
+      allEntriesWithUserId: allEntries.filter(e => e.userId).length
+    });
+    
+    if (showOnlyMyEntries && user) {
+      const myEntries = allEntries.filter(entry => {
+        const matches = entry.userId === user.uid;
+        if (!matches && entry.userId) {
+          console.log('Entry not mine:', { entryId: entry.id, entryUserId: entry.userId, myUserId: user.uid });
+        }
+        return matches;
+      });
+      console.log('Filtered my entries:', myEntries);
+      console.log('All entries count:', allEntries.length);
+      console.log('My entries count:', myEntries.length);
+      return myEntries;
+    }
+    console.log('Showing all entries:', allEntries.length);
+    return allEntries;
+  }, [allEntries, showOnlyMyEntries, user]);
 
   // ログアウト機能
   const handleLogout = async () => {
@@ -105,12 +142,13 @@ const App: React.FC = () => {
         await saveEntry(newEntry, user.uid, data.image);
         
         // データを再読み込み
-        await loadEntries(user.uid);
+        await loadAllEntries();
         
         // 最新のエントリを選択状態にする
-        const updatedEntries = await getUserEntries(user.uid);
-        if (updatedEntries.length > 0) {
-          setSelectedEntry(updatedEntries[0]);
+        const updatedEntries = await getAllEntries();
+        const myNewEntry = updatedEntries.find(e => e.userId === user.uid);
+        if (myNewEntry) {
+          setSelectedEntry(myNewEntry);
           setCurrentLocation({ lat, lng });
         }
       } catch (err) {
@@ -151,32 +189,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 未認証時
-  if (!user) {
-    return (
-      <div className="w-full h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center max-w-md p-8">
-          <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Bug className="w-10 h-10 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-2">MUSHI MAP</h1>
-          <p className="text-slate-600 mb-8">ログインしてコレクションを開始しましょう</p>
-          <button
-            onClick={() => setShowAuthForm(true)}
-            className="px-8 py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-xl"
-          >
-            ログイン / 新規登録
-          </button>
-        </div>
-        {showAuthForm && (
-          <AuthForm 
-            onClose={() => setShowAuthForm(false)} 
-            onSuccess={() => setShowAuthForm(false)}
-          />
-        )}
-      </div>
-    );
-  }
+  // 未認証時でもマップは表示（投稿時のみログインが必要）
 
   return (
     <div className="relative w-full h-screen bg-slate-50 flex flex-col md:flex-row overflow-hidden font-sans">
@@ -212,6 +225,34 @@ const App: React.FC = () => {
               className="w-full pl-11 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium"
             />
           </div>
+          
+          {/* 表示フィルター（ログイン時のみ表示） */}
+          {user && (
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
+              <button
+                onClick={() => setShowOnlyMyEntries(false)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all ${
+                  !showOnlyMyEntries
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                全員
+              </button>
+              <button
+                onClick={() => setShowOnlyMyEntries(true)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all ${
+                  showOnlyMyEntries
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <UserIcon className="w-4 h-4" />
+                自分のみ
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
@@ -274,22 +315,34 @@ const App: React.FC = () => {
           )}
         </div>
         
-        {/* ログアウトセクション */}
-        <div className="p-6 border-t border-slate-100 bg-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800 truncate">{user.email}</p>
-              <p className="text-xs text-slate-400">ログイン中</p>
+        {/* ログアウトセクション（ログイン時のみ表示） */}
+        {user ? (
+          <div className="p-6 border-t border-slate-100 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-800 truncate">{user.email}</p>
+                <p className="text-xs text-slate-400">ログイン中</p>
+              </div>
             </div>
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              ログアウト
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-2xl transition-all flex items-center justify-center gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            ログアウト
-          </button>
-        </div>
+        ) : (
+          <div className="p-6 border-t border-slate-100 bg-white">
+            <button
+              onClick={() => setShowAuthForm(true)}
+              className="w-full py-3 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <UserIcon className="w-4 h-4" />
+              ログイン / 新規登録
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main Map View */}
@@ -309,19 +362,32 @@ const App: React.FC = () => {
               </div>
               <span className="font-black text-slate-900 tracking-tight">MUSHI MAP</span>
             </div>
-            <button className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center">
-              <Search className="w-5 h-5 text-slate-500" />
-            </button>
+            {!user && (
+              <button
+                onClick={() => setShowAuthForm(true)}
+                className="px-3 py-1.5 bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md hover:bg-emerald-600 transition-all"
+              >
+                ログイン
+              </button>
+            )}
           </div>
         </div>
 
         {/* Floating Action Button */}
         <button
-          onClick={() => setIsFormOpen(true)}
+          onClick={() => {
+            if (!user) {
+              setShowAuthForm(true);
+            } else {
+              setIsFormOpen(true);
+            }
+          }}
           className="absolute bottom-10 right-10 z-20 w-20 h-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group shadow-emerald-200"
+          title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
         >
           <Plus className="w-10 h-10 group-hover:rotate-90 transition-transform duration-500" />
         </button>
+        
 
         {/* Details Overlay */}
         {selectedEntry && (

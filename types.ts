@@ -7,6 +7,7 @@ export interface InsectEntry {
   latitude: number;
   longitude: number;
   timestamp: number;
+  userId?: string; // 投稿者のユーザーID
   aiInsights?: {
     description: string;
     links: Array<{ title: string; uri: string }>;

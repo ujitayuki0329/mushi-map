@@ -13,6 +13,9 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebaseConfig';
 import { InsectEntry } from '../types';
 
+// 全ユーザーのエントリを取得（userIdを含む）
+export type EntryWithUserId = InsectEntry & { userId?: string };
+
 export const saveEntry = async (entry: Omit<InsectEntry, 'id' | 'imageUrl'>, userId: string, imageBase64: string) => {
   try {
     // 画像をStorageにアップロード
@@ -64,6 +67,36 @@ export const getUserEntries = async (userId: string): Promise<InsectEntry[]> => 
     return entries.sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
     console.error('Error fetching entries:', error);
+    throw error;
+  }
+};
+
+export const getAllEntries = async (): Promise<EntryWithUserId[]> => {
+  try {
+    const q = query(collection(db, 'insectEntries'));
+    const querySnapshot = await getDocs(q);
+    const entries = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      const entry: EntryWithUserId = {
+        id: doc.id,
+        name: data.name,
+        memo: data.memo,
+        imageUrl: data.imageUrl,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timestamp: data.timestamp || data.createdAt?.toMillis() || Date.now(),
+        aiInsights: data.aiInsights,
+        userId: data.userId || undefined // ユーザーIDも含める（明示的にundefinedを設定）
+      };
+      console.log('Entry loaded:', { id: entry.id, name: entry.name, userId: entry.userId });
+      return entry;
+    });
+    
+    console.log('Total entries loaded:', entries.length);
+    // クライアント側でソート
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error) {
+    console.error('Error fetching all entries:', error);
     throw error;
   }
 };

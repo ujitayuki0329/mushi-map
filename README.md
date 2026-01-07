@@ -43,3 +43,50 @@ View your app in AI Studio: https://ai.studio/apps/drive/17U45jQlrT2TVJt9B2a685A
 - `VITE_GEMINI_API_KEY` が正しく設定されているか確認してください
 - APIキーが有効か確認してください
 - ブラウザのコンソールでエラーメッセージを確認してください
+
+### Firebase権限エラーが発生する場合
+
+Firestoreのセキュリティルールを更新してください：
+
+1. [Firebase Console](https://console.firebase.google.com/)にアクセス
+2. プロジェクトを選択
+3. 「Firestore Database」→「ルール」タブ
+4. 以下のルールを設定：
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /insectEntries/{entryId} {
+      // 読み取り: 全員が可能（未ログインでもOK）
+      allow read: if true;
+      // 書き込み: ログイン必須、自分のデータのみ
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+  }
+}
+```
+
+5. 「公開」ボタンをクリック
+
+Storageのセキュリティルールも更新してください：
+
+1. 「Storage」→「ルール」タブ
+2. 以下のルールを設定：
+
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /insects/{userId}/{allPaths=**} {
+      // 読み取り: 全員が可能
+      allow read: if true;
+      // 書き込み: ログイン必須、自分のフォルダのみ
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+3. 「公開」ボタンをクリック
