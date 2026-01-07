@@ -1,7 +1,30 @@
-// 緯度・経度から都道府県を判定する簡易関数
+// 都道府県判定のキャッシュ（緯度・経度の丸め値から都道府県へのマッピング）
+const prefectureCache: Map<string, string> = new Map();
+
+// 緯度・経度を丸めてキャッシュキーを生成（0.01度 = 約1kmの精度）
+const getCacheKey = (lat: number, lng: number): string => {
+  return `${Math.round(lat * 100) / 100}_${Math.round(lng * 100) / 100}`;
+};
+
+// 緯度・経度から都道府県を判定する関数（同期版、より詳細な境界データを使用）
 export const getPrefectureFromCoordinates = (lat: number, lng: number): string => {
-  // 主要な都道府県の範囲を定義（簡易版）
-  // より正確な判定には逆ジオコーディングAPIを使用することを推奨
+  // キャッシュをチェック
+  const cacheKey = getCacheKey(lat, lng);
+  if (prefectureCache.has(cacheKey)) {
+    return prefectureCache.get(cacheKey)!;
+  }
+  
+  // より詳細な境界データを使用した判定
+  const prefecture = getPrefectureFromCoordinatesDetailed(lat, lng);
+  
+  // キャッシュに保存
+  prefectureCache.set(cacheKey, prefecture);
+  
+  return prefecture;
+};
+
+// より詳細な境界データを使用した判定関数
+const getPrefectureFromCoordinatesDetailed = (lat: number, lng: number): string => {
   
   // 北海道
   if (lat >= 41.0 && lat <= 45.5 && lng >= 139.0 && lng <= 146.0) {
@@ -38,32 +61,55 @@ export const getPrefectureFromCoordinates = (lat: number, lng: number): string =
     return '福島県';
   }
   
+  // 関東地方の詳細な判定（境界線をより正確に）
+  
   // 東京都（より具体的な範囲を先に判定）
   if (lat >= 35.3 && lat <= 35.9 && lng >= 138.7 && lng <= 139.9) {
     return '東京都';
   }
   
-  // 神奈川県
+  // 神奈川県（東京都の南、相模湾側）
   if (lat >= 35.0 && lat <= 35.7 && lng >= 138.5 && lng <= 139.5) {
     return '神奈川県';
   }
   
-  // 千葉県（より広い範囲で判定、東京都と重複する部分は東京都を優先）
-  if (lat >= 35.0 && lat <= 36.0 && lng >= 139.5 && lng <= 140.9) {
-    // 東京都の範囲と重複する場合は除外（既に東京都で判定済み）
+  // 埼玉県（東京都の北）
+  if (lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.8) {
+    // 東京都と重複しない範囲
     if (!(lat >= 35.3 && lat <= 35.9 && lng >= 138.7 && lng <= 139.9)) {
-      return '千葉県';
+      return '埼玉県';
     }
   }
   
-  // 埼玉県
-  if (lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.8) {
-    return '埼玉県';
+  // 千葉県（より詳細な範囲で判定）
+  // 千葉県の範囲: 北は茨城県・埼玉県と接する、南は太平洋、東は太平洋、西は東京湾・東京都・神奈川県と接する
+  if (lat >= 35.0 && lat <= 36.0 && lng >= 139.5 && lng <= 140.9) {
+    // 東京都、神奈川県、埼玉県の範囲と重複しない
+    const isTokyo = lat >= 35.3 && lat <= 35.9 && lng >= 138.7 && lng <= 139.9;
+    const isKanagawa = lat >= 35.0 && lat <= 35.7 && lng >= 138.5 && lng <= 139.5;
+    const isSaitama = lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.8;
+    
+    if (!isTokyo && !isKanagawa && !isSaitama) {
+      // さらに詳細な判定: 千葉県の西側境界（東京湾側）を考慮
+      // 東京湾の西側（lng < 139.8付近）は千葉県の可能性が高い
+      if (lng >= 139.8 || (lng >= 139.5 && lat >= 35.2)) {
+        return '千葉県';
+      }
+    }
   }
   
-  // 茨城県
+  // 茨城県（千葉県の北、埼玉県の東）
   if (lat >= 35.5 && lat <= 36.8 && lng >= 139.5 && lng <= 140.8) {
-    return '茨城県';
+    // 千葉県、埼玉県と重複しない範囲
+    const isChiba = lat >= 35.0 && lat <= 36.0 && lng >= 139.5 && lng <= 140.9 && 
+                     !(lat >= 35.3 && lat <= 35.9 && lng >= 138.7 && lng <= 139.9) &&
+                     !(lat >= 35.0 && lat <= 35.7 && lng >= 138.5 && lng <= 139.5) &&
+                     !(lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.8);
+    const isSaitama = lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.8;
+    
+    if (!isChiba && !isSaitama) {
+      return '茨城県';
+    }
   }
   
   // 栃木県

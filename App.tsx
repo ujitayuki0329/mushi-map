@@ -555,11 +555,12 @@ const App: React.FC = () => {
 
       {/* Main Map View */}
       <main className="flex-1 relative h-full">
-        <MapComponent 
-          entries={entries} 
-          center={currentLocation} 
+        <MapComponent
+          entries={entries}
+          center={currentLocation}
           onMarkerClick={setSelectedEntry}
           currentUserId={user?.uid || null}
+          selectedEntryId={selectedEntry?.id || null}
         />
 
         {/* Floating Header (Mobile) */}

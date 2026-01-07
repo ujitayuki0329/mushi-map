@@ -28,6 +28,8 @@ const createColoredIcon = (color: string) => {
 const myEntryIcon = createColoredIcon('#10b981');
 // 他人の投稿用（ブルー）
 const otherEntryIcon = createColoredIcon('#3b82f6');
+// 選択されたエントリ用（赤色）
+const selectedEntryIcon = createColoredIcon('#ef4444');
 // デフォルト（未ログイン時など）
 const defaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -42,6 +44,7 @@ interface MapComponentProps {
   center: { lat: number; lng: number };
   onMarkerClick: (entry: InsectEntry) => void;
   currentUserId: string | null;
+  selectedEntryId?: string | null;
 }
 
 const RecenterMap = ({ center }: { center: { lat: number; lng: number } }) => {
@@ -116,7 +119,7 @@ const MapSizeFix = () => {
   return null;
 };
 
-const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerClick, currentUserId }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerClick, currentUserId, selectedEntryId }) => {
   return (
     <div className="w-full h-full relative z-0" style={{ minHeight: '100%' }}>
       <MapContainer 
@@ -133,6 +136,20 @@ const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerCl
         <MapSizeFix />
         <RecenterMap center={center} />
         {entries.map((entry) => {
+          // 選択されたエントリの場合は赤色のアイコンを使用
+          if (selectedEntryId && entry.id === selectedEntryId) {
+            return (
+              <Marker 
+                key={entry.id} 
+                position={[entry.latitude, entry.longitude]}
+                icon={selectedEntryIcon}
+                eventHandlers={{
+                  click: () => onMarkerClick(entry),
+                }}
+              />
+            );
+          }
+          
           // 自分の投稿かどうかでアイコンを切り替え
           let markerIcon = defaultIcon;
           if (currentUserId) {
@@ -148,17 +165,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerCl
               eventHandlers={{
                 click: () => onMarkerClick(entry),
               }}
-            >
-              <Popup>
-                <div className="p-1 min-w-[120px]">
-                  <p className="font-bold text-sm mb-1">{entry.name}</p>
-                  {entry.imageUrl && (
-                    <img src={entry.imageUrl} alt={entry.name} className="w-full h-24 object-cover rounded mb-1" />
-                  )}
-                  <p className="text-xs text-gray-600 line-clamp-2">{entry.memo}</p>
-                </div>
-              </Popup>
-            </Marker>
+            />
           );
         })}
       </MapContainer>
