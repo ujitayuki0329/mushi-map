@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, ChevronDown, ChevronUp, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [showEntryListView, setShowEntryListView] = useState(false);
   const [userLocation, setUserLocation] = useState<Location | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isUserSectionCollapsed, setIsUserSectionCollapsed] = useState(false);
 
   // 認証状態の監視
   useEffect(() => {
@@ -355,70 +356,70 @@ const App: React.FC = () => {
       )}
       
       <aside className={`fixed md:relative bottom-0 md:bottom-auto left-0 md:left-auto right-0 md:right-auto top-auto md:top-auto w-full md:w-[26rem] h-[85vh] md:h-full max-h-[85vh] md:max-h-none flex flex-col bg-white shadow-2xl md:shadow-2xl z-[100] md:z-20 overflow-hidden border-r-0 md:border-r border-slate-100 rounded-t-[2.5rem] md:rounded-none transform transition-transform duration-300 ease-out ${isSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}>
-        <div className="p-4 md:p-8 pb-4 md:pb-6 space-y-4 md:space-y-6 flex-shrink-0 pt-6 md:pt-8">
+        <div className="p-3 md:p-4 pb-3 md:pb-4 space-y-2 md:space-y-3 flex-shrink-0 pt-4 md:pt-4">
           {/* Mobile Header with Close Button */}
-          <div className="flex items-center justify-between md:hidden pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-                <Bug className="w-4 h-4" />
+          <div className="flex items-center justify-between md:hidden pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-1.5">
+              <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                <Bug className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h1 className="text-lg font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
-                <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
+                <h1 className="text-base font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
+                <p className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
               </div>
             </div>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-2xl flex items-center justify-center transition-all"
+              className="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center transition-all"
             >
-              <X className="w-5 h-5 text-slate-600" />
+              <X className="w-4 h-4 text-slate-600" />
             </button>
           </div>
           
           {/* Desktop Header */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-              <Bug className="w-4 h-4" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+              <Bug className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
-              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">MUSHI MAP</h1>
+              <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Ecological Diary</p>
             </div>
           </div>
           <div className="relative group">
-            <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+            <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
             <input 
               type="text" 
               placeholder="記録を検索する..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 md:pl-11 pr-3 md:pr-4 py-3 md:py-4 bg-slate-50 border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium"
+              className="w-full pl-9 md:pl-10 pr-2.5 md:pr-3 py-2 md:py-2.5 bg-slate-50 border-none rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs md:text-sm font-medium"
             />
           </div>
           
           {/* 表示フィルター（ログイン時のみ表示） */}
           {user && (
-            <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-slate-50 rounded-2xl">
+            <div className="flex items-center gap-1.5 md:gap-2 p-1.5 md:p-2 bg-slate-50 rounded-xl">
               <button
                 onClick={() => setShowOnlyMyEntries(false)}
-                className={`flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-2 md:py-2.5 px-3 md:px-4 rounded-xl font-bold text-xs md:text-sm transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1 md:gap-1.5 py-1.5 md:py-2 px-2 md:px-3 rounded-lg font-bold text-[10px] md:text-xs transition-all ${
                   !showOnlyMyEntries
                     ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-white text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 全員
               </button>
               <button
                 onClick={() => setShowOnlyMyEntries(true)}
-                className={`flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-2 md:py-2.5 px-3 md:px-4 rounded-xl font-bold text-xs md:text-sm transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1 md:gap-1.5 py-1.5 md:py-2 px-2 md:px-3 rounded-lg font-bold text-[10px] md:text-xs transition-all ${
                   showOnlyMyEntries
                     ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-white text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <UserIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 自分のみ
               </button>
             </div>
@@ -500,60 +501,81 @@ const App: React.FC = () => {
         
         {/* ログアウトセクション（ログイン時のみ表示） */}
         {user ? (
-          <div className="p-3 md:p-4 border-t border-slate-100 bg-white space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className="text-xs md:text-sm font-bold text-slate-800 truncate">{user.email}</p>
-                  {isPremium && (
-                    <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center gap-0.5 flex-shrink-0">
-                      <Crown className="w-2.5 h-2.5" />
-                      PREMIUM
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] md:text-xs text-slate-400">
-                  {isPremium ? 'プレミアムプラン' : subscription ? `無料プラン (${postLimitInfo?.currentCount || 0}/${postLimitInfo?.limit || 10}件)` : 'ログイン中'}
-                </p>
-              </div>
-            </div>
-            
-            {!isPremium && (
-              <button
-                onClick={() => {
-                  setShowPremiumUpgrade(true);
-                  setIsSidebarOpen(false);
-                }}
-                className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200"
-              >
-                <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                プレミアムにアップグレード
-              </button>
-            )}
-            
-            {isPremium && (
-              <button
-                onClick={() => {
-                  setShowPremiumUpgrade(true);
-                  setIsSidebarOpen(false);
-                }}
-                className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
-              >
-                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                プレミアムプランの詳細
-              </button>
-            )}
-            
+          <div className="border-t border-slate-100 bg-white relative">
+            {/* 折りたたみボタン（右上、シンプルなアイコンボタン） */}
             <button
-              onClick={handleLogout}
-              className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
+              onClick={() => setIsUserSectionCollapsed(!isUserSectionCollapsed)}
+              className="absolute top-3 right-3 w-7 h-7 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg flex items-center justify-center hover:bg-white hover:border-slate-300 hover:shadow-md transition-all z-10 group"
+              title={isUserSectionCollapsed ? "開く" : "閉じる"}
             >
-              <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              ログアウト
+              {isUserSectionCollapsed ? (
+                <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-colors" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-colors" />
+              )}
             </button>
             
-            {/* アフィリエイトバナー */}
-            <AffiliateBanner className="mt-2" />
+            {/* ユーザー情報表示 */}
+            <div className="p-3 md:p-4">
+              <div className="flex items-center gap-1.5 mb-0.5 pr-6">
+                <p className="text-xs md:text-sm font-bold text-slate-800 truncate">{user.email}</p>
+                {isPremium && (
+                  <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center gap-0.5 flex-shrink-0">
+                    <Crown className="w-2.5 h-2.5" />
+                    PREMIUM
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] md:text-xs text-slate-400">
+                {isPremium ? 'プレミアムプラン' : subscription ? `無料プラン (${postLimitInfo?.currentCount || 0}/${postLimitInfo?.limit || 10}件)` : 'ログイン中'}
+              </p>
+            </div>
+            
+            {/* 折りたたみ可能なコンテンツ（アニメーション付き） */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                isUserSectionCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'
+              }`}
+            >
+              <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-2">
+                {!isPremium && (
+                  <button
+                    onClick={() => {
+                      setShowPremiumUpgrade(true);
+                      setIsSidebarOpen(false);
+                    }}
+                    className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200"
+                  >
+                    <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    プレミアムにアップグレード
+                  </button>
+                )}
+                
+                {isPremium && (
+                  <button
+                    onClick={() => {
+                      setShowPremiumUpgrade(true);
+                      setIsSidebarOpen(false);
+                    }}
+                    className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    プレミアムプランの詳細
+                  </button>
+                )}
+                
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  ログアウト
+                </button>
+                
+                {/* アフィリエイトバナー */}
+                <AffiliateBanner className="mt-2" variant="sidebar" />
+              </div>
+            </div>
           </div>
         ) : (
           <div className="p-3 md:p-4 border-t border-slate-100 bg-white space-y-2">
