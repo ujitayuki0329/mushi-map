@@ -613,7 +613,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Button Container - Current Location & New Post */}
-        <div className="absolute bottom-32 md:bottom-20 right-6 md:right-10 z-30 flex flex-col items-center gap-3">
+        <div className="absolute bottom-32 md:bottom-[8rem] right-6 md:right-10 z-30 flex flex-col items-center gap-3">
           {/* Current Location Button */}
           <button
             onClick={handleReturnToCurrentLocation}
@@ -640,7 +640,7 @@ const App: React.FC = () => {
         </div>
 
         {/* 地図上の広告枠 */}
-        <div className="absolute bottom-4 left-4 right-4 z-20">
+        <div className="absolute bottom-[3.5rem] left-4 right-4 z-20">
           <AffiliateBanner variant="map" />
         </div>
         
