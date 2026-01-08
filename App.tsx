@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, ChevronDown, ChevronUp, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, ChevronDown, ChevronUp, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation, Download, FileJson } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
@@ -13,6 +13,7 @@ import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
 import { getUserEntries, saveEntry, getAllEntries } from './services/dataService';
 import { canPostEntry, getUserSubscription, isPremiumActive, cancelPremium } from './services/subscriptionService';
+import { exportToCSV, exportToJSON } from './services/exportService';
 import type { EntryWithUserId } from './services/dataService';
 import type { UserSubscription } from './types';
 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [userLocation, setUserLocation] = useState<Location | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
   const [isUserSectionCollapsed, setIsUserSectionCollapsed] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // 認証状態の監視
   useEffect(() => {
@@ -244,6 +246,38 @@ const App: React.FC = () => {
       await logout();
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  // データエクスポート機能（CSV）
+  const handleExportCSV = async () => {
+    if (!user || !isPremium) return;
+    
+    setIsExporting(true);
+    try {
+      await exportToCSV(user.uid);
+      alert('CSV形式でデータをエクスポートしました');
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('データのエクスポートに失敗しました');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // データエクスポート機能（JSON）
+  const handleExportJSON = async () => {
+    if (!user || !isPremium) return;
+    
+    setIsExporting(true);
+    try {
+      await exportToJSON(user.uid);
+      alert('JSON形式でデータをエクスポートしました');
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('データのエクスポートに失敗しました');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -552,16 +586,39 @@ const App: React.FC = () => {
                 )}
                 
                 {isPremium && (
-                  <button
-                    onClick={() => {
-                      setShowPremiumUpgrade(true);
-                      setIsSidebarOpen(false);
-                    }}
-                    className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    プレミアムプランの詳細
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowPremiumUpgrade(true);
+                        setIsSidebarOpen(false);
+                      }}
+                      className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      プレミアムプランの詳細
+                    </button>
+                    
+                    {/* データエクスポート機能（プレミアムユーザーのみ） */}
+                    <div className="border-t border-slate-100 pt-2 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">データエクスポート</p>
+                      <button
+                        onClick={handleExportCSV}
+                        disabled={isExporting}
+                        className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        {isExporting ? 'エクスポート中...' : 'CSV形式でエクスポート'}
+                      </button>
+                      <button
+                        onClick={handleExportJSON}
+                        disabled={isExporting}
+                        className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <FileJson className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        {isExporting ? 'エクスポート中...' : 'JSON形式でエクスポート'}
+                      </button>
+                    </div>
+                  </>
                 )}
                 
                 <button
@@ -572,8 +629,8 @@ const App: React.FC = () => {
                   ログアウト
                 </button>
                 
-                {/* アフィリエイトバナー */}
-                <AffiliateBanner className="mt-2" variant="sidebar" />
+                {/* アフィリエイトバナー（プレミアムユーザーは非表示） */}
+                {!isPremium && <AffiliateBanner className="mt-2" variant="sidebar" />}
               </div>
             </div>
           </div>
@@ -590,8 +647,8 @@ const App: React.FC = () => {
               ログイン / 新規登録
             </button>
             
-            {/* アフィリエイトバナー */}
-            <AffiliateBanner />
+            {/* アフィリエイトバナー（プレミアムユーザーは非表示） */}
+            {!isPremium && <AffiliateBanner />}
           </div>
         )}
       </aside>
@@ -661,12 +718,14 @@ const App: React.FC = () => {
         </button>
         </div>
 
-        {/* 地図上の広告枠 */}
-        <div className={`fixed md:absolute bottom-0 left-4 right-4 md:left-4 md:right-4 z-20 pb-2 md:pb-4 transition-opacity duration-300 ${
-          isSidebarOpen ? 'md:opacity-100 opacity-0 pointer-events-none md:pointer-events-auto' : 'opacity-100'
-        }`}>
-          <AffiliateBanner variant="map" />
-        </div>
+        {/* 地図上の広告枠（プレミアムユーザーは非表示） */}
+        {!isPremium && (
+          <div className={`fixed md:absolute bottom-0 left-4 right-4 md:left-4 md:right-4 z-20 pb-2 md:pb-4 transition-opacity duration-300 ${
+            isSidebarOpen ? 'md:opacity-100 opacity-0 pointer-events-none md:pointer-events-auto' : 'opacity-100'
+          }`}>
+            <AffiliateBanner variant="map" />
+          </div>
+        )}
         
 
         {/* Details Overlay */}
