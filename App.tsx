@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, ChevronDown, ChevronUp, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation, Download, FileJson } from 'lucide-react';
+import { Plus, Map as MapIcon, Info, ExternalLink, Bug, Search, Loader2, Calendar, ChevronRight, ChevronDown, ChevronUp, X, LogOut, Users, User as UserIcon, Menu, Crown, List, Navigation, Download, FileJson, Palette } from 'lucide-react';
 import { User } from 'firebase/auth';
 import MapComponent from './components/MapComponent';
 import EntryForm from './components/EntryForm';
@@ -8,14 +8,15 @@ import AuthForm from './components/AuthForm';
 import PremiumUpgrade from './components/PremiumUpgrade';
 import EntryListView from './components/EntryListView';
 import AffiliateBanner from './components/AffiliateBanner';
-import { InsectEntry, Location } from './types';
+import CustomMarkerSettings from './components/CustomMarkerSettings';
+import { InsectEntry, Location, UserSubscription, CustomMarkerSettings as CustomMarkerSettingsType } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
 import { getUserEntries, saveEntry, getAllEntries } from './services/dataService';
 import { canPostEntry, getUserSubscription, isPremiumActive, cancelPremium } from './services/subscriptionService';
 import { exportToCSV, exportToJSON } from './services/exportService';
+import { getUserMarkerSettings } from './services/markerService';
 import type { EntryWithUserId } from './services/dataService';
-import type { UserSubscription } from './types';
 
 const DEFAULT_LOCATION: Location = { lat: 35.6895, lng: 139.6917 }; // Tokyo
 
@@ -41,6 +42,8 @@ const App: React.FC = () => {
   const [isCanceling, setIsCanceling] = useState(false);
   const [isUserSectionCollapsed, setIsUserSectionCollapsed] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCustomMarkerSettings, setShowCustomMarkerSettings] = useState(false);
+  const [customMarkerSettings, setCustomMarkerSettings] = useState<CustomMarkerSettingsType | null>(null);
 
   // 認証状態の監視
   useEffect(() => {
@@ -62,11 +65,24 @@ const App: React.FC = () => {
     if (user) {
       loadAllEntries();
       loadSubscription();
+      loadCustomMarkerSettings();
     } else {
       setSubscription(null);
       setIsPremium(false);
+      setCustomMarkerSettings(null);
     }
   }, [user]);
+
+  // カスタムマーカー設定の読み込み
+  const loadCustomMarkerSettings = async () => {
+    if (!user) return;
+    try {
+      const settings = await getUserMarkerSettings(user.uid);
+      setCustomMarkerSettings(settings);
+    } catch (error) {
+      console.error('Error loading custom marker settings:', error);
+    }
+  };
 
   // サブスクリプション情報の読み込み
   const loadSubscription = async () => {
@@ -598,6 +614,18 @@ const App: React.FC = () => {
                       プレミアムプランの詳細
                     </button>
                     
+                    {/* カスタムマーカー設定（プレミアムユーザーのみ） */}
+                    <button
+                      onClick={() => {
+                        setShowCustomMarkerSettings(true);
+                        setIsSidebarOpen(false);
+                      }}
+                      className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Palette className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      カスタムマーカー設定
+                    </button>
+                    
                     {/* データエクスポート機能（プレミアムユーザーのみ） */}
                     <div className="border-t border-slate-100 pt-2 space-y-2">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">データエクスポート</p>
@@ -661,6 +689,7 @@ const App: React.FC = () => {
           onMarkerClick={setSelectedEntry} 
           currentUserId={user?.uid || null}
           selectedEntryId={selectedEntry?.id || null}
+          customMarkerSettings={customMarkerSettings}
         />
 
         {/* Floating Header (Mobile) */}
@@ -886,6 +915,18 @@ const App: React.FC = () => {
             setCurrentLocation({ lat: entry.latitude, lng: entry.longitude });
           }}
           currentUserId={user?.uid || null}
+        />
+      )}
+
+      {showCustomMarkerSettings && user && (
+        <CustomMarkerSettings
+          userId={user.uid}
+          onClose={async () => {
+            setShowCustomMarkerSettings(false);
+            await loadCustomMarkerSettings(); // 設定を再読み込み
+            // 地図を再レンダリングするために、エントリを再読み込み
+            await loadAllEntries();
+          }}
         />
       )}
     </div>

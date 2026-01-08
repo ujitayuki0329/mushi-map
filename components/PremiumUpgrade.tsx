@@ -123,7 +123,7 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-3 md:p-4 border-2 border-emerald-200">
               <div className="text-center mb-2 md:mb-3">
                 <div className="flex items-baseline justify-center gap-2">
-                  <span className="text-2xl md:text-3xl font-black text-emerald-600">¥980</span>
+                  <span className="text-2xl md:text-3xl font-black text-emerald-600">¥480</span>
                   <span className="text-slate-600 font-bold text-xs md:text-sm">/月</span>
                 </div>
                 <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5">初月無料トライアル</p>

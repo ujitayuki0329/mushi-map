@@ -28,3 +28,10 @@ export interface UserSubscription {
   endDate?: number; // プレミアムの場合、有効期限
   isActive: boolean;
 }
+
+export interface CustomMarkerSettings {
+  userId: string;
+  color: string; // マーカーの色（HEX形式）
+  iconType?: 'default' | 'star' | 'circle' | 'square'; // アイコンの種類
+  updatedAt: number;
+}

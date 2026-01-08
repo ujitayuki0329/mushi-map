@@ -72,6 +72,12 @@ service cloud.firestore {
       // 書き込み: 自分のサブスクリプション情報のみ
       allow write: if request.auth != null && request.auth.uid == userId;
     }
+    match /userMarkerSettings/{userId} {
+      // 読み取り: 自分のマーカー設定のみ
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // 書き込み: 自分のマーカー設定のみ
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 ```

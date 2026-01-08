@@ -1,9 +1,11 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { InsectEntry } from '../types';
+import { getUserMarkerSettings } from '../services/markerService';
+import { CustomMarkerSettings } from '../types';
 
 // 色付きマーカーアイコンの作成関数（標準デザインを維持）
 const createColoredIcon = (color: string) => {
@@ -45,6 +47,7 @@ interface MapComponentProps {
   onMarkerClick: (entry: InsectEntry) => void;
   currentUserId: string | null;
   selectedEntryId?: string | null;
+  customMarkerSettings?: CustomMarkerSettings | null;
 }
 
 const RecenterMap = ({ center }: { center: { lat: number; lng: number } }) => {
@@ -119,7 +122,7 @@ const MapSizeFix = () => {
   return null;
 };
 
-const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerClick, currentUserId, selectedEntryId }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerClick, currentUserId, selectedEntryId, customMarkerSettings }) => {
   return (
     <div className="w-full h-full relative z-0" style={{ minHeight: '100%' }}>
       <MapContainer 
@@ -153,8 +156,17 @@ const MapComponent: React.FC<MapComponentProps> = ({ entries, center, onMarkerCl
           // 自分の投稿かどうかでアイコンを切り替え
           let markerIcon = defaultIcon;
           if (currentUserId) {
-            const isMyEntry = entry.userId === currentUserId;
-            markerIcon = isMyEntry ? myEntryIcon : otherEntryIcon;
+            // userIdの比較（文字列として確実に比較）
+            const isMyEntry = entry.userId && entry.userId === currentUserId;
+            if (isMyEntry && customMarkerSettings && customMarkerSettings.color) {
+              // カスタムマーカー設定がある場合はそれを使用
+              markerIcon = createColoredIcon(customMarkerSettings.color);
+            } else if (isMyEntry) {
+              // カスタムマーカー設定がない場合はデフォルト
+              markerIcon = myEntryIcon;
+            } else {
+              markerIcon = otherEntryIcon;
+            }
           }
           
           return (
