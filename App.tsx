@@ -7,6 +7,7 @@ import EntryForm from './components/EntryForm';
 import AuthForm from './components/AuthForm';
 import PremiumUpgrade from './components/PremiumUpgrade';
 import EntryListView from './components/EntryListView';
+import AffiliateBanner from './components/AffiliateBanner';
 import { InsectEntry, Location } from './types';
 import { getInsectDetails } from './services/geminiService';
 import { onAuthChange, logout } from './services/authService';
@@ -290,7 +291,7 @@ const App: React.FC = () => {
         const myNewEntry = updatedEntries.find(e => e.userId === user.uid);
         if (myNewEntry) {
           setSelectedEntry(myNewEntry);
-          setCurrentLocation({ lat, lng });
+        setCurrentLocation({ lat, lng });
         }
       } catch (err) {
         console.error("Save error:", err);
@@ -428,7 +429,7 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between mb-2 sticky top-0 bg-white pt-2 pb-1 z-10">
             <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">最近の採集</h2>
             <div className="flex items-center gap-2">
-              <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold">{entries.length} 件</span>
+            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold">{entries.length} 件</span>
               <button
                 onClick={() => {
                   setShowEntryListView(true);
@@ -499,19 +500,19 @@ const App: React.FC = () => {
         
         {/* ログアウトセクション（ログイン時のみ表示） */}
         {user ? (
-          <div className="p-4 md:p-6 border-t border-slate-100 bg-white space-y-3">
+          <div className="p-3 md:p-4 border-t border-slate-100 bg-white space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm font-bold text-slate-800 truncate">{user.email}</p>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-xs md:text-sm font-bold text-slate-800 truncate">{user.email}</p>
                   {isPremium && (
-                    <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
-                      <Crown className="w-3 h-3" />
+                    <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center gap-0.5 flex-shrink-0">
+                      <Crown className="w-2.5 h-2.5" />
                       PREMIUM
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-[10px] md:text-xs text-slate-400">
                   {isPremium ? 'プレミアムプラン' : subscription ? `無料プラン (${postLimitInfo?.currentCount || 0}/${postLimitInfo?.limit || 10}件)` : 'ログイン中'}
                 </p>
               </div>
@@ -523,9 +524,9 @@ const App: React.FC = () => {
                   setShowPremiumUpgrade(true);
                   setIsSidebarOpen(false);
                 }}
-                className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200"
               >
-                <Crown className="w-4 h-4" />
+                <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 プレミアムにアップグレード
               </button>
             )}
@@ -536,43 +537,49 @@ const App: React.FC = () => {
                   setShowPremiumUpgrade(true);
                   setIsSidebarOpen(false);
                 }}
-                className="w-full py-3 text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
               >
-                <Info className="w-4 h-4" />
+                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 プレミアムプランの詳細
               </button>
             )}
             
             <button
               onClick={handleLogout}
-              className="w-full py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+              className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
               ログアウト
             </button>
+            
+            {/* アフィリエイトバナー */}
+            <AffiliateBanner className="mt-2" />
           </div>
         ) : (
-          <div className="p-4 md:p-6 border-t border-slate-100 bg-white">
+          <div className="p-3 md:p-4 border-t border-slate-100 bg-white space-y-2">
             <button
               onClick={() => {
                 setShowAuthForm(true);
                 setIsSidebarOpen(false);
               }}
-              className="w-full py-3 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-2xl transition-all flex items-center justify-center gap-2"
+              className="w-full py-2 md:py-2.5 text-xs md:text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center justify-center gap-1.5"
             >
-              <UserIcon className="w-4 h-4" />
+              <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
               ログイン / 新規登録
             </button>
+            
+            {/* アフィリエイトバナー */}
+            <AffiliateBanner />
           </div>
         )}
       </aside>
 
       {/* Main Map View */}
       <main className="flex-1 relative h-full">
-        <MapComponent
-          entries={entries}
-          center={currentLocation}
-          onMarkerClick={setSelectedEntry}
+        <MapComponent 
+          entries={entries} 
+          center={currentLocation} 
+          onMarkerClick={setSelectedEntry} 
           currentUserId={user?.uid || null}
           selectedEntryId={selectedEntry?.id || null}
         />
@@ -600,13 +607,13 @@ const App: React.FC = () => {
                 className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg hover:bg-emerald-600 transition-all"
               >
                 <Menu className="w-5 h-5" />
-              </button>
+            </button>
             </div>
           </div>
         </div>
 
         {/* Button Container - Current Location & New Post */}
-        <div className="absolute bottom-24 md:bottom-10 right-6 md:right-10 z-20 flex flex-col items-center gap-3">
+        <div className="absolute bottom-32 md:bottom-20 right-6 md:right-10 z-30 flex flex-col items-center gap-3">
           {/* Current Location Button */}
           <button
             onClick={handleReturnToCurrentLocation}
@@ -616,8 +623,8 @@ const App: React.FC = () => {
             <Navigation className="w-5 h-5 md:w-6 md:h-6" />
           </button>
 
-          {/* Floating Action Button */}
-          <button
+        {/* Floating Action Button */}
+        <button
             onClick={() => {
               if (!user) {
                 setShowAuthForm(true);
@@ -629,7 +636,12 @@ const App: React.FC = () => {
             title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
           >
             <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
-          </button>
+        </button>
+        </div>
+
+        {/* 地図上の広告枠 */}
+        <div className="absolute bottom-4 left-4 right-4 z-20">
+          <AffiliateBanner variant="map" />
         </div>
         
 
