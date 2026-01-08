@@ -662,7 +662,9 @@ const App: React.FC = () => {
         </div>
 
         {/* 地図上の広告枠 */}
-        <div className="absolute bottom-[3.5rem] left-4 right-4 z-20">
+        <div className={`fixed md:absolute bottom-0 left-4 right-4 md:left-4 md:right-4 z-20 pb-2 md:pb-4 transition-opacity duration-300 ${
+          isSidebarOpen ? 'md:opacity-100 opacity-0 pointer-events-none md:pointer-events-auto' : 'opacity-100'
+        }`}>
           <AffiliateBanner variant="map" />
         </div>
         
