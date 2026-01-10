@@ -27,6 +27,8 @@ export interface UserSubscription {
   startDate: number;
   endDate?: number; // プレミアムの場合、有効期限
   isActive: boolean;
+  stripeCustomerId?: string; // Stripe顧客ID
+  stripeSubscriptionId?: string; // StripeサブスクリプションID
 }
 
 export interface CustomMarkerSettings {

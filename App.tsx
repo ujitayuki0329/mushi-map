@@ -16,6 +16,7 @@ import { getUserEntries, saveEntry, getAllEntries } from './services/dataService
 import { canPostEntry, getUserSubscription, isPremiumActive, cancelPremium } from './services/subscriptionService';
 import { exportToCSV, exportToJSON } from './services/exportService';
 import { getUserMarkerSettings } from './services/markerService';
+import { redirectToCheckout, redirectToCheckoutLink } from './services/stripeService';
 import type { EntryWithUserId } from './services/dataService';
 
 const DEFAULT_LOCATION: Location = { lat: 35.6895, lng: 139.6917 }; // Tokyo
@@ -71,6 +72,54 @@ const App: React.FC = () => {
       setIsPremium(false);
       setCustomMarkerSettings(null);
     }
+  }, [user]);
+
+  // 決済完了後の処理（URLパラメータを監視）
+  useEffect(() => {
+    if (!user) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    if (sessionId) {
+      // 決済完了画面から戻ってきた場合
+      console.log('Payment completed, session_id:', sessionId);
+      
+      // URLからsession_idパラメータを削除
+      // URLからsession_idパラメータと/successパスを削除
+      const currentPath = window.location.pathname;
+      const newPath = currentPath.replace('/success', '') || '/';
+      window.history.replaceState({}, '', newPath);
+      
+      // Webhookの処理が完了するまで少し待ってからサブスクリプション状態を再読み込み
+      // Webhookは非同期で処理されるため、数秒待つ
+      setTimeout(() => {
+        console.log('Reloading subscription status after payment...');
+        loadSubscription();
+      }, 3000); // 3秒待つ（Webhookの処理時間を考慮）
+    }
+  }, [user]);
+
+  // ページがフォーカスされた時にサブスクリプション状態を再読み込み
+  // （Stripeから戻ってきた時など）
+  useEffect(() => {
+    if (!user) return;
+
+    const handleFocus = () => {
+      // ページがフォーカスされた時にサブスクリプション状態を再読み込み
+      // ただし、頻繁に再読み込みしないように少し遅延を入れる
+      const timeoutId = setTimeout(() => {
+        loadSubscription();
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   // カスタムマーカー設定の読み込み
@@ -859,20 +908,50 @@ const App: React.FC = () => {
             setPostLimitInfo(null);
           }}
           onUpgrade={async () => {
-            // ここで実際の決済処理を実装
-            // 現在はデモとして、直接プレミアムにアップグレード
-            if (user) {
-              try {
-                const { upgradeToPremium } = await import('./services/subscriptionService');
-                await upgradeToPremium(user.uid, 1);
-                await loadSubscription();
-                setShowPremiumUpgrade(false);
-                setPostLimitInfo(null);
-                alert('プレミアムプランにアップグレードしました！');
-              } catch (error) {
-                console.error('Upgrade error:', error);
-                alert('アップグレードに失敗しました。もう一度お試しください。');
+            if (!user) return;
+            
+            try {
+              // Stripe決済フローを開始
+              const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID;
+              const STRIPE_CHECKOUT_LINK = import.meta.env.VITE_STRIPE_CHECKOUT_LINK;
+              
+              if (STRIPE_CHECKOUT_LINK) {
+                // 方法1: Stripe Checkoutのホスト型ページを使用（簡易版）
+                // Stripeダッシュボードで事前に作成したCheckoutリンクを使用
+                redirectToCheckoutLink(STRIPE_CHECKOUT_LINK);
+              } else if (STRIPE_PRICE_ID) {
+                // 方法2: バックエンドAPI経由でCheckout Sessionを作成（推奨）
+                // 注意: この方法を使用する場合は、Firebase FunctionsまたはバックエンドAPIを実装してください
+                const { createCheckoutSession, redirectToCheckout } = await import('./services/stripeService');
+                const { sessionId, url } = await createCheckoutSession(
+                  STRIPE_PRICE_ID,
+                  user.uid,
+                  `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+                  `${window.location.origin}/cancel`
+                );
+                await redirectToCheckout(sessionId, url);
+              } else {
+                // フォールバック: デモモード（開発用）
+                // 本番環境では削除してください
+                if (import.meta.env.DEV) {
+                  const confirmed = window.confirm(
+                    'Stripeの設定が完了していません。\nデモモードでプレミアムプランにアップグレードしますか？\n\n本番環境では、Stripeの設定が必要です。'
+                  );
+                  if (confirmed) {
+                    const { upgradeToPremium } = await import('./services/subscriptionService');
+                    await upgradeToPremium(user.uid, 1);
+                    await loadSubscription();
+                    setShowPremiumUpgrade(false);
+                    setPostLimitInfo(null);
+                    alert('プレミアムプランにアップグレードしました！（デモモード）');
+                  }
+                } else {
+                  alert('決済システムの設定が完了していません。管理者にお問い合わせください。');
+                }
               }
+            } catch (error: any) {
+              console.error('Upgrade error:', error);
+              alert('決済処理の開始に失敗しました: ' + (error.message || error));
             }
           }}
           onCancel={async () => {
