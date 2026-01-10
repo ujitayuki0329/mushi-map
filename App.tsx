@@ -959,7 +959,9 @@ const App: React.FC = () => {
             
             // 確認ダイアログ
             const confirmed = window.confirm(
-              'プレミアムプランを解約しますか？\n\n解約後は無料プランに戻り、月間10件の投稿制限が適用されます。'
+              'プレミアムプランを解約しますか？\n\n' +
+              '解約後も現在の期間終了までプレミアムプランをご利用いただけます。\n' +
+              '期間終了後は自動的に無料プランに戻り、月間10件の投稿制限が適用されます。'
             );
             
             if (!confirmed) return;
@@ -967,10 +969,24 @@ const App: React.FC = () => {
             setIsCanceling(true);
             try {
               await cancelPremium(user.uid);
+              // サブスクリプション状態を再読み込み（Firestoreが更新されるまで少し待つ）
+              await new Promise(resolve => setTimeout(resolve, 1000));
               await loadSubscription();
-              setShowPremiumUpgrade(false);
-              setPostLimitInfo(null);
-              alert('プレミアムプランを解約しました。無料プランに戻りました。');
+              
+              // 解約予約が完了したことを通知
+              const updatedSubscription = await getUserSubscription(user.uid);
+              if (updatedSubscription?.cancelAtPeriodEnd && updatedSubscription?.endDate) {
+                const expiryDate = new Date(updatedSubscription.endDate);
+                const daysUntilExpiry = Math.ceil((updatedSubscription.endDate - Date.now()) / (1000 * 60 * 60 * 24));
+                alert(
+                  `解約予約が完了しました。\n\n` +
+                  `有効期限: ${expiryDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}\n` +
+                  `あと${daysUntilExpiry}日間プレミアムプランをご利用いただけます。\n\n` +
+                  `期間終了まで引き続きすべての機能をご利用いただけます。`
+                );
+              } else {
+                alert('解約予約が完了しました。期間終了までプレミアムプランをご利用いただけます。');
+              }
             } catch (error: any) {
               console.error('Cancel error:', error);
               alert('解約に失敗しました: ' + (error.message || error));
@@ -982,6 +998,8 @@ const App: React.FC = () => {
           limit={postLimitInfo?.limit}
           reason={postLimitInfo?.reason}
           isPremium={isPremium}
+          cancelAtPeriodEnd={subscription?.cancelAtPeriodEnd}
+          endDate={subscription?.endDate}
         />
       )}
 

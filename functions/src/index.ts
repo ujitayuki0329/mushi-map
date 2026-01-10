@@ -67,6 +67,58 @@ export const createCheckoutSession = functions.https.onCall(async (data, context
   }
 });
 
+// サブスクリプションを解約（期間終了後にキャンセル）
+export const cancelSubscription = functions.https.onCall(async (data, context) => {
+  // 認証チェック
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'ログインが必要です');
+  }
+
+  const userId = context.auth.uid;
+  const db = admin.firestore();
+
+  try {
+    // ユーザーのサブスクリプション情報を取得
+    const docRef = db.collection('userSubscriptions').doc(userId);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'サブスクリプションが見つかりません');
+    }
+
+    const { stripeSubscriptionId } = docSnap.data() as any;
+
+    if (!stripeSubscriptionId) {
+      throw new functions.https.HttpsError('failed-precondition', 'StripeサブスクリプションIDがありません');
+    }
+
+    // Stripeで解約予約（期間終了後にキャンセル）
+    const subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    // 解約予約後、即座にFirestoreを更新（Webhookを待たない）
+    // current_period_endは秒単位なので、ミリ秒に変換
+    const updateData = {
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      endDate: subscription.current_period_end * 1000, // ミリ秒に変換
+    };
+
+    await db.collection('userSubscriptions').doc(userId).update(updateData);
+    
+    console.log(`Subscription cancellation scheduled for user: ${userId}, endDate: ${updateData.endDate}`);
+
+    return { 
+      success: true,
+      endDate: updateData.endDate,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end
+    };
+  } catch (error: any) {
+    console.error('Cancel subscription error:', error);
+    throw new functions.https.HttpsError('internal', error.message || '解約処理に失敗しました');
+  }
+});
+
 // Webhook: サブスクリプション成功時の処理
 // Express.jsを使用して生のリクエストボディを取得
 const webhookApp = express();
@@ -142,6 +194,8 @@ webhookApp.post('*', async (req, res) => {
   }
 
   try {
+    const db = admin.firestore();
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId || session.client_reference_id;
@@ -153,29 +207,40 @@ webhookApp.post('*', async (req, res) => {
       console.log('Extracted userId:', userId);
 
       if (userId) {
-        const db = admin.firestore();
+        // サブスクリプション情報を取得してcurrent_period_endを設定
+        let endDate: number | null = null;
+        let cancelAtPeriodEnd = false;
+        
+        if (session.subscription) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+            endDate = subscription.current_period_end * 1000; // ミリ秒に変換
+            cancelAtPeriodEnd = subscription.cancel_at_period_end;
+            console.log('Retrieved subscription:', {
+              id: subscription.id,
+              current_period_end: subscription.current_period_end,
+              cancel_at_period_end: subscription.cancel_at_period_end
+            });
+          } catch (subError: any) {
+            console.error('Error retrieving subscription:', subError);
+            // エラーが発生しても続行（endDateはnullのまま）
+          }
+        }
+        
         const subscriptionData = {
           userId,
           plan: 'premium',
           startDate: Date.now(),
-          endDate: null, // サブスクリプションは自動更新
+          endDate, // サブスクリプションの期間終了日を設定
           isActive: true,
           stripeCustomerId: session.customer,
           stripeSubscriptionId: session.subscription,
+          cancelAtPeriodEnd, // 解約予約状態を設定
         };
         
         console.log('Writing subscription data to Firestore:', subscriptionData);
         
         await db.collection('userSubscriptions').doc(userId).set(subscriptionData, { merge: true });
-        
-        // 書き込み後の確認
-        const docRef = db.collection('userSubscriptions').doc(userId);
-        const docSnap = await docRef.get();
-        if (docSnap.exists) {
-          console.log('Subscription data confirmed in Firestore:', docSnap.data());
-        } else {
-          console.error('ERROR: Subscription data was not written to Firestore!');
-        }
         
         console.log(`Premium subscription activated for user: ${userId}`);
       } else {
@@ -184,12 +249,37 @@ webhookApp.post('*', async (req, res) => {
       }
     }
 
+    // サブスクリプション更新イベント（解約予約時など）
+    if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer as string;
+
+      // 顧客IDからユーザーIDを取得
+      const subscriptionsSnapshot = await db.collection('userSubscriptions')
+        .where('stripeCustomerId', '==', customerId)
+        .get();
+
+      if (!subscriptionsSnapshot.empty) {
+        const subscriptionDoc = subscriptionsSnapshot.docs[0];
+        const userId = subscriptionDoc.id;
+
+        // cancel_at_period_endの状態を反映
+        // 期間終了日は current_period_end (秒単位のタイムスタンプ)
+        const updateData = {
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          endDate: subscription.current_period_end * 1000, // ミリ秒に変換
+        };
+
+        await db.collection('userSubscriptions').doc(userId).update(updateData);
+        console.log(`Subscription updated for user: ${userId}, cancelAtPeriodEnd: ${subscription.cancel_at_period_end}`);
+      }
+    }
+
     if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = subscription.customer as string;
       
       // 顧客IDからユーザーIDを取得
-      const db = admin.firestore();
       const subscriptionsSnapshot = await db.collection('userSubscriptions')
         .where('stripeCustomerId', '==', customerId)
         .get();
@@ -202,6 +292,7 @@ webhookApp.post('*', async (req, res) => {
           plan: 'free',
           isActive: false,
           endDate: Date.now(),
+          cancelAtPeriodEnd: false,
         });
         
         console.log(`Premium subscription cancelled for user: ${userId}`);

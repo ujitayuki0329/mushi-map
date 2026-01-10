@@ -17,7 +17,10 @@ export const getUserSubscription = async (userId: string): Promise<UserSubscript
         plan: data.plan as SubscriptionPlan,
         startDate: data.startDate,
         endDate: data.endDate,
-        isActive: data.isActive ?? true
+        isActive: data.isActive ?? true,
+        cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+        stripeCustomerId: data.stripeCustomerId,
+        stripeSubscriptionId: data.stripeSubscriptionId,
       };
     }
     
@@ -196,24 +199,23 @@ export const isPremiumActive = async (userId: string): Promise<boolean> => {
   }
 };
 
-// プレミアムプランを解約（無料プランにダウングレード）
+// プレミアムプランを解約（解約予約）
 export const cancelPremium = async (userId: string): Promise<void> => {
   try {
-    const subscriptionRef = doc(db, 'userSubscriptions', userId);
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const cancelSubscriptionFn = httpsCallable(functions, 'cancelSubscription');
     
-    // 無料プランにダウングレード
-    await updateDoc(subscriptionRef, {
-      plan: 'free' as SubscriptionPlan,
-      isActive: true,
-      // endDateは削除しない（履歴として残す）
-    });
+    await cancelSubscriptionFn();
+    
+    // UI反映のために少し待つ（WebhookがFiretoreを更新するのを待つわけではないが、
+    // ユーザーに処理完了感を出すため）
   } catch (error: any) {
     console.error('Error canceling premium:', error);
-    // 権限エラーの場合は詳細なメッセージを提供
-    if (error?.code === 'permission-denied') {
-      throw new Error('Firebaseのセキュリティルールが正しく設定されていません。READMEを参照してセキュリティルールを更新してください。');
+    if (error.code === 'functions/permission-denied' || error?.code === 'permission-denied') {
+      throw new Error('権限がありません。ログインしてください。');
     }
-    throw error;
+    throw new Error('解約処理に失敗しました: ' + (error.message || '不明なエラー'));
   }
 };
 

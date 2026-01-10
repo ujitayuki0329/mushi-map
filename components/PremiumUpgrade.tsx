@@ -9,17 +9,33 @@ interface PremiumUpgradeProps {
   limit?: number;
   reason?: string;
   isPremium?: boolean;
+  cancelAtPeriodEnd?: boolean; // 解約予約済みかどうか
+  endDate?: number; // 有効期限（ミリ秒）
 }
 
-const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({ 
-  onClose, 
-  onUpgrade, 
+const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
+  onClose,
+  onUpgrade,
   onCancel,
-  currentCount, 
+  currentCount,
   limit,
   reason,
-  isPremium = false
+  isPremium = false,
+  cancelAtPeriodEnd = false,
+  endDate,
 }) => {
+  // 有効期限までの日数を計算
+  const getDaysUntilExpiry = (): number | null => {
+    if (!endDate) return null;
+    const now = Date.now();
+    const diff = endDate - now;
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const daysUntilExpiry = getDaysUntilExpiry();
+  const hasCancelScheduled = cancelAtPeriodEnd && endDate && endDate > Date.now();
+
   const features = [
     { icon: Infinity, text: '無制限の投稿' },
     { icon: Zap, text: '高精度AI判定' },
@@ -97,26 +113,48 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
         <div className="px-4 md:px-6 pb-3 md:pb-4 pt-3 flex-shrink-0 border-t border-slate-100 bg-white">
           {isPremium && onCancel ? (
             // プレミアムユーザー向けの解約セクション
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-3 md:p-4 border-2 border-slate-200">
+            <div className={`bg-gradient-to-br ${hasCancelScheduled ? 'from-amber-50 to-amber-100 border-amber-200' : 'from-slate-50 to-slate-100 border-slate-200'} rounded-xl p-3 md:p-4 border-2`}>
               <div className="text-center mb-2 md:mb-3">
                 <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Crown className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
-                  <span className="text-base md:text-lg font-black text-slate-900">プレミアムプラン利用中</span>
+                  <Crown className={`w-4 h-4 md:w-5 md:h-5 ${hasCancelScheduled ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  <span className="text-base md:text-lg font-black text-slate-900">
+                    {hasCancelScheduled ? '解約予約済み' : 'プレミアムプラン利用中'}
+                  </span>
                 </div>
-                <p className="text-[10px] md:text-xs text-slate-600">現在、すべての機能をご利用いただけます</p>
+                {hasCancelScheduled ? (
+                  <>
+                    <p className="text-[10px] md:text-xs text-amber-700 font-bold mb-1">
+                      有効期限: {endDate ? new Date(endDate).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) : '不明'}
+                    </p>
+                    {daysUntilExpiry !== null && daysUntilExpiry > 0 && (
+                      <p className="text-[10px] md:text-xs text-amber-700 font-bold">
+                        あと{daysUntilExpiry}日間プレミアムプランをご利用いただけます
+                      </p>
+                    )}
+                    <p className="text-[9px] md:text-[10px] text-amber-600 mt-1">
+                      期間終了まで引き続きすべての機能をご利用いただけます
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] md:text-xs text-slate-600">現在、すべての機能をご利用いただけます</p>
+                )}
               </div>
               
-              <button
-                onClick={onCancel}
-                className="w-full py-2.5 md:py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-black text-sm md:text-base transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-              >
-                <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="text-xs md:text-sm">プレミアムプランを解約</span>
-              </button>
-              
-              <p className="text-[9px] md:text-[10px] text-center text-slate-500 mt-1.5 md:mt-2">
-                解約後は無料プランに戻ります
-              </p>
+              {!hasCancelScheduled && (
+                <>
+                  <button
+                    onClick={onCancel}
+                    className="w-full py-2.5 md:py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-black text-sm md:text-base transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <span className="text-xs md:text-sm">プレミアムプランを解約</span>
+                  </button>
+                  
+                  <p className="text-[9px] md:text-[10px] text-center text-slate-500 mt-1.5 md:mt-2">
+                    解約後は現在の期間終了まで利用可能です
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             // 無料ユーザー向けのアップグレードセクション

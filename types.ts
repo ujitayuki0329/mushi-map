@@ -29,6 +29,7 @@ export interface UserSubscription {
   isActive: boolean;
   stripeCustomerId?: string; // Stripe顧客ID
   stripeSubscriptionId?: string; // StripeサブスクリプションID
+  cancelAtPeriodEnd?: boolean; // 次回更新時に解約予定かどうか
 }
 
 export interface CustomMarkerSettings {
