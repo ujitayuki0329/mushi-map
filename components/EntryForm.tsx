@@ -1,15 +1,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, MapPin, Loader2, Sparkles, Wand2, Upload, Video } from 'lucide-react';
-import { analyzeInsectImage } from '../services/geminiService';
+import { analyzeInsectImage, analyzeInsectImagePremium } from '../services/geminiService';
 
 interface EntryFormProps {
   onSave: (data: { name: string; memo: string; image: string }) => void;
   onClose: () => void;
   isSaving: boolean;
+  isPremium?: boolean; // プレミアムユーザーかどうか
 }
 
-const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
+const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving, isPremium = false }) => {
   const [name, setName] = useState('');
   const [memo, setMemo] = useState('');
   const [image, setImage] = useState<string | null>(null);
@@ -114,10 +115,19 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
     setIsAnalyzing(true);
     setErrorMessage(null);
     try {
-      const result = await analyzeInsectImage(image);
+      // プレミアムユーザーの場合は高精度なAI判定を使用
+      const result = isPremium 
+        ? await analyzeInsectImagePremium(image)
+        : await analyzeInsectImage(image);
+      
       if (result) {
         setName(result.name || '');
-        setMemo(result.description || '');
+        // プレミアムの場合はより詳細な情報をメモに含める
+        if (isPremium && result.description) {
+          setMemo(result.description);
+        } else {
+          setMemo(result.description || '');
+        }
       } else {
         setErrorMessage('AI判定に失敗しました。もう一度お試しください。');
       }
@@ -152,7 +162,9 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800 leading-none">新規採集の記録</h2>
-              <p className="text-xs text-slate-400 mt-1">AIが種類を判別します</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {isPremium ? '高精度AIが種類を判別します' : 'AIが種類を判別します'}
+              </p>
             </div>
           </div>
           <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600">
@@ -214,7 +226,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
                     className="absolute bottom-4 right-4 bg-emerald-500 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-sm font-bold hover:scale-105 transition-transform"
                   >
                     <Wand2 className="w-4 h-4" />
-                    AIで判定
+                    {isPremium ? '高精度AIで判定' : 'AIで判定'}
                   </button>
                 )}
               </div>
@@ -253,7 +265,9 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
             {isAnalyzing && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur rounded-3xl flex flex-col items-center justify-center z-10 animate-in fade-in">
                 <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-3" />
-                <p className="text-sm font-bold text-emerald-600">AIが画像を分析中...</p>
+                <p className="text-sm font-bold text-emerald-600">
+                  {isPremium ? '高精度AIが画像を分析中...' : 'AIが画像を分析中...'}
+                </p>
               </div>
             )}
             </div>

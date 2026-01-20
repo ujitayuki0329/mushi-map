@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Crown, Check, Sparkles, Infinity, Zap, Shield } from 'lucide-react';
+import { X, Crown, Check, Sparkles, Infinity, Zap, Shield, Loader2 } from 'lucide-react';
 
 interface PremiumUpgradeProps {
   onClose: () => void;
@@ -11,6 +11,7 @@ interface PremiumUpgradeProps {
   isPremium?: boolean;
   cancelAtPeriodEnd?: boolean; // 解約予約済みかどうか
   endDate?: number; // 有効期限（ミリ秒）
+  isCanceling?: boolean; // 解約処理中かどうか
 }
 
 const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
@@ -23,6 +24,7 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
   isPremium = false,
   cancelAtPeriodEnd = false,
   endDate,
+  isCanceling = false,
 }) => {
   // 有効期限までの日数を計算
   const getDaysUntilExpiry = (): number | null => {
@@ -144,14 +146,24 @@ const PremiumUpgrade: React.FC<PremiumUpgradeProps> = ({
                 <>
                   <button
                     onClick={onCancel}
-                    className="w-full py-2.5 md:py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-black text-sm md:text-base transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                    disabled={isCanceling}
+                    className="w-full py-2.5 md:py-3 bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-800 rounded-xl font-black text-sm md:text-base transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100 flex items-center justify-center gap-2"
                   >
-                    <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    <span className="text-xs md:text-sm">プレミアムプランを解約</span>
+                    {isCanceling ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                        <span className="text-xs md:text-sm">解約処理中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        <span className="text-xs md:text-sm">プレミアムプランを解約</span>
+                      </>
+                    )}
                   </button>
                   
                   <p className="text-[9px] md:text-[10px] text-center text-slate-500 mt-1.5 md:mt-2">
-                    解約後は現在の期間終了まで利用可能です
+                    {isCanceling ? '解約処理を実行しています。しばらくお待ちください...' : '解約後は現在の期間終了まで利用可能です'}
                   </p>
                 </>
               )}

@@ -819,29 +819,112 @@ const App: React.FC = () => {
 
         {/* Details Overlay */}
         {selectedEntry && (
-          <div className="absolute inset-x-4 bottom-32 md:inset-auto md:top-8 md:right-8 md:w-[28rem] z-30 animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-white/60 overflow-hidden flex flex-col max-h-[75vh]">
-              <div className="relative h-56 flex-shrink-0">
-                <img 
-                  src={selectedEntry.imageUrl || 'https://images.unsplash.com/photo-1576402187878-974f70c890a5?q=80&w=400&auto=format&fit=crop'} 
-                  alt={selectedEntry.name} 
-                  className="w-full h-full object-cover" 
-                />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
-                <button 
-                  onClick={() => setSelectedEntry(null)}
-                  className="absolute top-4 right-4 w-10 h-10 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-2xl transition-all flex items-center justify-center"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <div className="absolute bottom-4 left-6">
-                  <span className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black rounded-xl uppercase shadow-lg shadow-emerald-200">
-                    DISCOVERY RECORD
-                  </span>
+          <>
+            {/* モバイル用: 中央配置のオーバーレイ */}
+            <div className="fixed inset-0 z-30 flex items-center justify-center p-4 md:hidden animate-in fade-in duration-300">
+              <div 
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+                onClick={() => setSelectedEntry(null)}
+              />
+              <div className="relative w-full max-w-md bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-white/60 overflow-hidden flex flex-col h-[85vh] max-h-[600px]">
+                <div className="relative h-56 flex-shrink-0">
+                  <img 
+                    src={selectedEntry.imageUrl || 'https://images.unsplash.com/photo-1576402187878-974f70c890a5?q=80&w=400&auto=format&fit=crop'} 
+                    alt={selectedEntry.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                  <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                  <button 
+                    onClick={() => setSelectedEntry(null)}
+                    className="absolute top-4 right-4 w-10 h-10 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-2xl transition-all flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-4 left-6">
+                    <span className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black rounded-xl uppercase shadow-lg shadow-emerald-200">
+                      DISCOVERY RECORD
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedEntry.name}</h2>
+                    <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl">
+                      {new Date(selectedEntry.timestamp).toLocaleDateString()}
+                    </span>
+                  </div>
+                  
+                  <p className="text-slate-600 text-sm mb-8 leading-relaxed font-medium">
+                    {selectedEntry.memo || '観察記録がありません'}
+                  </p>
+
+                  {selectedEntry.aiInsights ? (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                      <div className="flex items-center gap-2.5 text-emerald-600 font-black text-[11px] uppercase tracking-widest">
+                        <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                        AI Insights & Ecological Data
+                      </div>
+                      <div className="bg-slate-50/80 p-6 rounded-[2rem] border border-slate-100">
+                        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line font-medium italic">
+                          "{selectedEntry.aiInsights.description}"
+                        </p>
+                        
+                        {selectedEntry.aiInsights.links.length > 0 && (
+                          <div className="mt-6 pt-6 border-t border-slate-200/50 space-y-3">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">関連スポット・資料</p>
+                            <div className="grid grid-cols-1 gap-2">
+                              {selectedEntry.aiInsights.links.map((link, idx) => (
+                                <a 
+                                  key={idx} 
+                                  href={link.uri} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-between p-4 bg-white rounded-2xl text-xs font-bold text-slate-700 hover:text-emerald-600 shadow-sm hover:shadow-md transition-all group border border-slate-50"
+                                >
+                                  <span className="truncate pr-4">{link.title}</span>
+                                  <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-20 group-hover:opacity-100 transition-opacity" />
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                      <Loader2 className="w-6 h-6 text-slate-300 animate-spin mb-2" />
+                      <p className="text-xs font-bold text-slate-400">生態データを分析中...</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              
-              <div className="px-8 pb-8 pt-2 overflow-y-auto">
+            </div>
+
+            {/* デスクトップ用: 右上固定 */}
+            <div className="absolute inset-x-4 bottom-32 md:inset-auto md:top-8 md:right-8 md:w-[28rem] z-30 hidden md:block animate-in fade-in zoom-in-95 duration-300">
+              <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-white/60 overflow-hidden flex flex-col max-h-[75vh]">
+                <div className="relative h-56 flex-shrink-0">
+                  <img 
+                    src={selectedEntry.imageUrl || 'https://images.unsplash.com/photo-1576402187878-974f70c890a5?q=80&w=400&auto=format&fit=crop'} 
+                    alt={selectedEntry.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                  <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                  <button 
+                    onClick={() => setSelectedEntry(null)}
+                    className="absolute top-4 right-4 w-10 h-10 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-2xl transition-all flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-4 left-6">
+                    <span className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black rounded-xl uppercase shadow-lg shadow-emerald-200">
+                      DISCOVERY RECORD
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="px-8 pb-8 pt-2 overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight">{selectedEntry.name}</h2>
                   <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl">
@@ -891,9 +974,10 @@ const App: React.FC = () => {
                     <p className="text-xs font-bold text-slate-400">生態データを分析中...</p>
                   </div>
                 )}
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </main>
 
@@ -1011,6 +1095,7 @@ const App: React.FC = () => {
           isPremium={isPremium}
           cancelAtPeriodEnd={subscription?.cancelAtPeriodEnd}
           endDate={subscription?.endDate}
+          isCanceling={isCanceling}
         />
       )}
 
