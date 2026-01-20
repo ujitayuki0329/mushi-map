@@ -18,6 +18,11 @@ export type EntryWithUserId = InsectEntry & { userId?: string };
 
 export const saveEntry = async (entry: Omit<InsectEntry, 'id' | 'imageUrl'>, userId: string, imageBase64: string) => {
   try {
+    // 画像のバリデーション
+    if (!imageBase64 || imageBase64.trim() === '') {
+      throw new Error('画像が指定されていません。画像をアップロードまたは撮影してください。');
+    }
+
     // 画像をStorageにアップロード
     const imageRef = ref(storage, `insects/${userId}/${Date.now()}.jpg`);
     await uploadString(imageRef, imageBase64, 'data_url');

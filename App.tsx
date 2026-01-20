@@ -352,6 +352,12 @@ const App: React.FC = () => {
       return;
     }
 
+    // 画像のバリデーション
+    if (!data.image || data.image.trim() === '') {
+      alert('画像をアップロードまたは撮影してください。');
+      return;
+    }
+
     // 投稿制限をチェック
     const postCheck = await canPostEntry(user.uid);
     if (!postCheck.canPost) {
@@ -770,7 +776,21 @@ const App: React.FC = () => {
         </div>
 
         {/* Button Container - Current Location & New Post */}
-        <div className="absolute bottom-32 md:bottom-[8rem] right-6 md:right-10 z-30 flex flex-col items-center gap-3">
+        {/* 地図上の広告枠（プレミアムユーザーは非表示） */}
+        {!isPremium && (
+          <div className={`fixed md:absolute bottom-0 left-4 right-4 md:left-4 md:right-4 z-20 pb-2 md:pb-4 transition-opacity duration-300 ${
+            isSidebarOpen ? 'md:opacity-100 opacity-0 pointer-events-none md:pointer-events-auto' : 'opacity-100'
+          }`}>
+            <AffiliateBanner variant="map" />
+          </div>
+        )}
+
+        {/* 登録ボタンと位置ボタン（広告の上に固定） */}
+        <div className={`fixed right-4 md:right-10 z-30 flex flex-col items-center gap-3 ${
+          isPremium 
+            ? 'bottom-4 md:bottom-6' // プレミアムユーザー（広告なし）: 下から16px/24px
+            : 'bottom-24 md:bottom-28' // 無料ユーザー（広告あり）: 広告の上に固定（96px/112px）
+        }`}>
           {/* Current Location Button */}
           <button
             onClick={handleReturnToCurrentLocation}
@@ -780,8 +800,8 @@ const App: React.FC = () => {
             <Navigation className="w-5 h-5 md:w-6 md:h-6" />
           </button>
 
-        {/* Floating Action Button */}
-        <button
+          {/* Floating Action Button */}
+          <button
             onClick={() => {
               if (!user) {
                 setShowAuthForm(true);
@@ -793,17 +813,8 @@ const App: React.FC = () => {
             title={!user ? "投稿するにはログインが必要です" : "新規投稿"}
           >
             <Plus className="w-8 h-8 md:w-10 md:h-10 group-hover:rotate-90 transition-transform duration-500" />
-        </button>
+          </button>
         </div>
-
-        {/* 地図上の広告枠（プレミアムユーザーは非表示） */}
-        {!isPremium && (
-          <div className={`fixed md:absolute bottom-0 left-4 right-4 md:left-4 md:right-4 z-20 pb-2 md:pb-4 transition-opacity duration-300 ${
-            isSidebarOpen ? 'md:opacity-100 opacity-0 pointer-events-none md:pointer-events-auto' : 'opacity-100'
-          }`}>
-            <AffiliateBanner variant="map" />
-          </div>
-        )}
         
 
         {/* Details Overlay */}

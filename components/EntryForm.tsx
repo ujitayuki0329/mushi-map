@@ -21,6 +21,12 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // モバイルデバイスかどうかを判定
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  };
+
   // カメラストリームのクリーンアップ
   useEffect(() => {
     return () => {
@@ -125,8 +131,15 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-    onSave({ name, memo, image: image || '' });
+    if (!name) {
+      setErrorMessage('昆虫の名前を入力してください。');
+      return;
+    }
+    if (!image) {
+      setErrorMessage('画像をアップロードまたは撮影してください。');
+      return;
+    }
+    onSave({ name, memo, image });
   };
 
   return (
@@ -149,7 +162,13 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Image Upload/Camera Area */}
-          <div className="relative group">
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-1">
+              画像
+              <span className="text-red-500 text-xs">*</span>
+              <span className="text-slate-300 normal-case font-normal text-[10px]">（必須）</span>
+            </label>
+            <div className="relative group">
             {isCameraMode ? (
               <div className="relative h-56 rounded-3xl overflow-hidden bg-black">
                 <video
@@ -203,7 +222,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
               <div className="space-y-3">
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative h-48 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
+                  className="relative h-48 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all border-red-200 hover:border-red-400 hover:bg-red-50/30 bg-red-50/20"
                 >
                   <div className="text-center">
                     <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
@@ -229,12 +248,19 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
               onChange={handleFileChange} 
               className="hidden" 
               accept="image/*"
+              capture={isMobileDevice() ? "environment" : undefined}
             />
             {isAnalyzing && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur rounded-3xl flex flex-col items-center justify-center z-10 animate-in fade-in">
                 <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-3" />
                 <p className="text-sm font-bold text-emerald-600">AIが画像を分析中...</p>
               </div>
+            )}
+            </div>
+            {!image && (
+              <p className="text-xs text-red-500 font-medium ml-1">
+                画像をアップロードまたは撮影してください（必須）
+              </p>
             )}
           </div>
           {errorMessage && (
@@ -271,8 +297,8 @@ const EntryForm: React.FC<EntryFormProps> = ({ onSave, onClose, isSaving }) => {
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={isSaving || isAnalyzing || !name}
-              className="flex-1 py-4 font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 rounded-[1.5rem] shadow-xl shadow-slate-200 transition-all flex items-center justify-center gap-2 group overflow-hidden relative"
+              disabled={isSaving || isAnalyzing || !name || !image}
+              className="flex-1 py-4 font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed rounded-[1.5rem] shadow-xl shadow-slate-200 transition-all flex items-center justify-center gap-2 group overflow-hidden relative"
             >
               {isSaving ? (
                 <>
